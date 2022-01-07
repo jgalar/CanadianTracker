@@ -17,13 +17,13 @@ logger = logging.getLogger(__name__)
 def print_welcome() -> None:
     click.echo(
         click.style(
-            "Bienvenue chez Canadian Scrapper",
+            "Bienvenue chez Canadian Scraper",
             fg="green",
             bold=True,
         )
         + " / "
         + click.style(
-            "Welcome to Canadian Scrapper",
+            "Welcome to Canadian Scraper",
             fg="red",
             bold=True,
         )
