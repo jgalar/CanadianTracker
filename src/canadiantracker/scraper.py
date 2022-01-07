@@ -75,13 +75,22 @@ def scrape_inventory(db_path: str) -> None:
     )
     inventory = canadiantracker.triangle.ProductInventory()
 
-    with click.progressbar(
-        inventory,
-        label="Scraping inventory",
-        show_pos=True,
-        item_show_func=lambda p: textwrap.shorten(p.name, width=32, placeholder="...")
+    progress_bar_settings = {
+        "label":"Scraping inventory",
+        "show_pos":True,
+        'item_show_func': lambda p: textwrap.shorten(p.name, width=32, placeholder="...")
         if p
         else None,
+    }
+
+    if logging.root.level == logging.DEBUG:
+        # Deactivate progress bar in debug mode since its updates make the
+        # output very spammy
+        progress_bar_settings["bar_template"] = ""
+
+    with click.progressbar(
+        inventory,
+        **progress_bar_settings
     ) as bar_wrapper:
         for product_listing in bar_wrapper:
             repository.add_product_listing_entry(product_listing)
