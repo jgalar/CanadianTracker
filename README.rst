@@ -12,3 +12,14 @@ performance, it does so in two steps implemented as two commands:
 
 Use ``--help`` on any of the commands for more information on their role and options.
 
+Getting Started
+---------------
+
+Canadian Tracker uses `poetry` to manage its dependancies. As such, you can
+easily run the project from the development tree:
+
+.. code-block:: console
+
+  # Install all dependancies to a virtual environment
+  $ poetry install
+  $ poetry run ctscraper
