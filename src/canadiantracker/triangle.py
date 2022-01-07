@@ -1,6 +1,8 @@
 import requests
 import logging
 from collections.abc import Sequence
+
+from requests.models import Response
 from canadiantracker.model import ProductListingEntry, ProductInfo
 
 logger = logging.getLogger(__name__)
@@ -8,9 +10,10 @@ logger = logging.getLogger(__name__)
 
 class ProductInventory:
     def __init__(self):
+        self._total_product_count = None
         pass
 
-    def __iter__(self) -> ProductListingEntry:
+    def _request_page(self, page_number) -> dict:
         url = "https://api.canadiantire.ca/search/api/v0/product/en/"
         headers = {
             "Accept": "*/*",
@@ -19,28 +22,29 @@ class ProductInventory:
             "Host": "api.canadiantire.ca",
         }
 
-        total_product_count = None
+        return requests.get(
+            url,
+            headers=headers,
+            params={"site": "ct", "page": page_number, "format": "json"},
+        )
+
+    def __len__(self) -> int:
+        if self._total_product_count is None:
+            response = self._request_page(1)
+            self._total_product_count = int(response.json()["query"]["total-results"])
+
+        return self._total_product_count
+
+    def __iter__(self) -> ProductListingEntry:
+        logger.debug("Enumerating %i products", len(self))
         enumerated_product_count = 0
         page = 1
 
-        while (
-            total_product_count is None
-            or enumerated_product_count < total_product_count
-        ):
-            response = requests.get(
-                url,
-                headers=headers,
-                params={"site": "ct", "page": page, "format": "json"},
-            )
+        while enumerated_product_count < len(self):
             logger.debug("Fetching listing of page {}".format(page))
-            with open("/tmp/page-{}.json".format(page), "w") as f:
-                f.write(str(response.content.decode("utf-8")))
+            response = self._request_page(page)
 
             page = page + 1
-
-            if total_product_count is None:
-                total_product_count = int(response.json()["query"]["total-results"])
-                logger.info("{} products to list".format(total_product_count))
 
             for product in response.json()["results"]:
                 enumerated_product_count = enumerated_product_count + 1
