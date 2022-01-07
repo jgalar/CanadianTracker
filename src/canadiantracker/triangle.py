@@ -3,7 +3,6 @@ import logging
 import fake_useragent
 from collections.abc import Sequence, Iterable, Iterator
 
-from requests.models import Response
 from canadiantracker.model import ProductInfoSample, ProductListingEntry, ProductInfo
 
 logger = logging.getLogger(__name__)
