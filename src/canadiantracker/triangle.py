@@ -7,13 +7,40 @@ from canadiantracker.model import ProductInfoSample, ProductListingEntry, Produc
 
 logger = logging.getLogger(__name__)
 
+class _ProductCategory:
+    def __init__(self, name: str, pretty_name: str):
+        self._name = name
+        self._pretty_name = pretty_name
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def pretty_name(self) -> str:
+        return self._pretty_name
 
 class ProductInventory(Iterable):
     def __init__(self):
-        self._total_product_count = None
-        pass
+        response = ProductInventory._request_page().json()
+        self._total_product_count = int(response["query"]["total-results"])
 
-    def _request_page(self, page_number) -> dict:
+        self._product_categories = []
+        for name, pretty_name in response["metadata"]["categoryMap"].items():
+            # Only keep top-level categories
+            #if len(name.split('::')) == 1 or len(name.split('::')) == 2:
+            self._product_categories.append(_ProductCategory(name, pretty_name))
+
+        self._product_categories.sort(key=lambda category: category.name)
+        for c in self._product_categories:
+            response = ProductInventory._request_page(c.name).json()
+            count = int(response["query"]["total-results"])
+            print(c.name + " : " + c.pretty_name + ": " + str(count) + " items")
+        import sys
+        sys.exit()
+
+    @staticmethod
+    def _request_page(category=None, page_number=1) -> dict:
         url = "https://api.canadiantire.ca/search/api/v0/product/en/"
         headers = {
             "Accept": "*/*",
@@ -22,17 +49,19 @@ class ProductInventory(Iterable):
             "Host": "api.canadiantire.ca",
         }
 
+        params = {"site": "ct", "page": page_number, "format": "json"}
+
+        if category:
+            params["x1"] = "ast-id-level-1"
+            params["q1"] = category
+
         return requests.get(
             url,
             headers=headers,
-            params={"site": "ct", "page": page_number, "format": "json"},
+            params=params,
         )
 
     def __len__(self) -> int:
-        if self._total_product_count is None:
-            response = self._request_page(1)
-            self._total_product_count = int(response.json()["query"]["total-results"])
-
         return self._total_product_count
 
     def __iter__(self) -> Iterator[ProductListingEntry]:
@@ -42,7 +71,10 @@ class ProductInventory(Iterable):
 
         while enumerated_product_count < len(self):
             logger.debug("Fetching listing of page {}".format(page))
-            response = self._request_page(page)
+            response = ProductInventory._request_page(page_number=page)
+
+            with open('/tmp/response', 'w') as f:
+                f.write(response.text)
 
             page = page + 1
 
