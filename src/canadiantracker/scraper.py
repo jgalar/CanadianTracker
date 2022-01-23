@@ -4,9 +4,11 @@ import json
 import pprint
 import sys
 import logging
+import textwrap
 
 import canadiantracker.triangle
 import canadiantracker.storage
+import canadiantracker.model
 
 
 logger = logging.getLogger(__name__)
@@ -49,6 +51,12 @@ def cli(debug: bool, args=None) -> None:
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
 
 
+def progress_bar_product_name(
+    product_listing_entry: canadiantracker.model.ProductListingEntry,
+) -> str:
+    return product_listing_entry.name
+
+
 @cli.command(name="scrape-inventory", short_help="fetch static product properties")
 @click.option(
     "--db-path",
@@ -67,8 +75,16 @@ def scrape_inventory(db_path: str) -> None:
     )
     inventory = canadiantracker.triangle.ProductInventory()
 
-    for product_listing in inventory:
-        repository.add_product_listing_entry(product_listing)
+    with click.progressbar(
+        inventory,
+        label="Scraping inventory",
+        show_pos=True,
+        item_show_func=lambda p: textwrap.shorten(p.name, width=32, placeholder="...")
+        if p
+        else None,
+    ) as bar_wrapper:
+        for product_listing in bar_wrapper:
+            repository.add_product_listing_entry(product_listing)
 
 
 @cli.command(name="scrape-prices", short_help="fetch current product prices")
