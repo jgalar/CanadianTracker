@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "canadiantracker"
+version = "0.1.0"
+description = ""
+authors = ["Jérémie Galarneau <jeremie.galarneau@efficios.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+click = "^8.0.3"
+requests = "^2.26.0"
+SQLAlchemy = "^1.4.29"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+canadianscraper = "canadiantracker.cli:cli"
