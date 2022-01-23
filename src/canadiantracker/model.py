@@ -8,23 +8,19 @@ class ProductInfo:
 
     @property
     def price(self) -> float:
-        return float(self._raw_payload["Price"])
-
-    @property
-    def sku(self) -> str:
-        return self._raw_payload["SKU"]
+        try:
+            price = self._raw_payload["Promo"]["Price"]
+        except KeyError:
+            price = self._raw_payload["Price"]
+        return float(price)
 
     @property
     def code(self) -> str:
         return self._raw_payload["Product"]
 
     @property
-    def quantity(self) -> int:
-        return self._raw_payload["Quantity"]
-
-    @property
-    def description(self) -> str:
-        return self._raw_payload["Description"]
+    def in_promo(self) -> bool:
+        return "Promo" in self._raw_payload
 
     @property
     def raw_payload(self) -> str:

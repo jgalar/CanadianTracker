@@ -1,14 +1,15 @@
 import requests
 import logging
-from collections.abc import Sequence
+import fake_useragent
+from collections.abc import Sequence, Iterable, Iterator
 
 from requests.models import Response
-from canadiantracker.model import ProductListingEntry, ProductInfo
+from canadiantracker.model import ProductInfoSample, ProductListingEntry, ProductInfo
 
 logger = logging.getLogger(__name__)
 
 
-class ProductInventory:
+class ProductInventory(Iterable):
     def __init__(self):
         self._total_product_count = None
         pass
@@ -35,7 +36,7 @@ class ProductInventory:
 
         return self._total_product_count
 
-    def __iter__(self) -> ProductListingEntry:
+    def __iter__(self) -> Iterator[ProductListingEntry]:
         logger.debug("Enumerating %i products", len(self))
         enumerated_product_count = 0
         page = 1
@@ -54,28 +55,57 @@ class ProductInventory:
                     product["field"]["clearance"] == "T",
                 )
 
+class ProductLedger(Iterable):
+    def __init__(self, products: Iterator[ProductListingEntry]):
+        self._products = products
+        pass
 
-def get_product_infos(
-    productListings: Sequence[ProductListingEntry],
-) -> Sequence[ProductInfo]:
-    url = "https://api-triangle.canadiantire.ca/esb/PriceAvailability"
-    headers = {
-        "Accept": "*/*",
-        "Accept-Encoding": "gzip, deflate",
-        "Connection": "keep-alive",
-        "Host": "api-triangle.canadiantire.ca",
-    }
+    def __len__(self) -> int:
+        return len(self._products)
 
-    params = {
-        "Product": ",".join([product.code for product in productListings]),
-        "Store": "0064",
-        "Banner": "CTR",
-        "isKiosk": "FALSE",
-        "Language": "E",
-    }
+    @staticmethod
+    def _batches(it: Iterator, batch_max_size: int):
+        batch = []
+        for element in it:
+            batch.append(element)
+            if len(batch) == batch_max_size:
+                yield batch
+                batch = []
 
-    logger.debug("requested {} product infos".format(len(productListings)))
-    response = requests.get(url, headers=headers, params=params)
-    logger.debug("received {} product infos".format(len(response.json())))
-    logger.debug(str(response.json()))
-    return [ProductInfo(product_info) for product_info in response.json()]
+        if len(batch) > 0:
+            yield batch
+
+    @staticmethod
+    def _user_agent() -> str:
+        return fake_useragent.UserAgent().random
+
+    @staticmethod
+    def _get_product_infos(
+        productListings: Sequence[ProductListingEntry],
+    ) -> Sequence[ProductInfo]:
+        url = "https://api-triangle.canadiantire.ca/esb/PriceAvailability"
+        headers = {
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip, deflate",
+            "Connection": "keep-alive",
+            "Host": "api-triangle.canadiantire.ca",
+            "User-Agent": ProductLedger._user_agent()
+        }
+
+        params = {
+            "Product": ",".join([product.code for product in productListings]),
+            "Banner": "CTR",
+            "Language": "E",
+        }
+
+        logger.debug("requested {} product infos".format(len(productListings)))
+        response = requests.get(url, headers=headers, params=params)
+        logger.debug("received {} product infos".format(len(response.json())))
+        logger.debug(str(response.json()))
+        return [ProductInfo(product_info) for product_info in response.json()]
+
+    def __iter__(self) -> Iterator[ProductInfo]:
+        # The API limits requests to 40 products
+        for batch in self._batches(self._products, 40):
+            for product_info in self._get_product_infos(batch):
+                yield product_info
