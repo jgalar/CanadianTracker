@@ -5,12 +5,9 @@ import pprint
 import sys
 import logging
 
-from canadiantracker.ctapi import (
-    ProductInventory,
-    ProductListingEntry,
-    get_product_infos,
-    ProductInfo,
-)
+import canadiantracker.triangle
+import canadiantracker.storage
+
 
 logger = logging.getLogger(__name__)
 
@@ -64,11 +61,14 @@ def scrape_inventory(db_path: str) -> None:
     """
     Fetch static product properties.
     """
-    inventory = ProductInventory()
 
-    for product in inventory:
-        print(product)
-        product_infos = get_product_infos([product])
+    repository = canadiantracker.storage.get_product_repository_from_sqlite_file(
+        db_path, should_create=True
+    )
+    inventory = canadiantracker.triangle.ProductInventory()
+
+    for product_listing in inventory:
+        repository.add_product_listing_entry(product_listing)
 
 
 @cli.command(name="scrape-prices", short_help="fetch current product prices")

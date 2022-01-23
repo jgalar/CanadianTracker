@@ -1,38 +1,9 @@
 import requests
 import logging
 from collections.abc import Sequence
+from canadiantracker.model import ProductListingEntry, ProductInfo
 
 logger = logging.getLogger(__name__)
-
-
-class ProductListingEntry:
-    def __init__(self, code: str, name: str, clearance: bool):
-        self._code = code
-        self._name = name
-        self._clearance = clearance
-
-    def __str__(self) -> str:
-        return "[{code}] {name}".format(code=self._code, name=self._name)
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def code(self):
-        return self._code
-
-    @property
-    def is_in_clearance(self):
-        return self._clearance
-
-    def __repr__(self):
-        props = {
-            "name": self.name,
-            "code": self.code,
-            "is_in_clearance": self.is_in_clearance,
-        }
-        return str(props)
 
 
 class ProductInventory:
@@ -46,7 +17,6 @@ class ProductInventory:
             "Accept-Encoding": "gzip, deflate",
             "Connection": "keep-alive",
             "Host": "api.canadiantire.ca",
-            "User-Agent": "HTTPie/2.6.0",
         }
 
         total_product_count = None
@@ -57,53 +27,28 @@ class ProductInventory:
             total_product_count is None
             or enumerated_product_count < total_product_count
         ):
-            response = requests.get(url, headers=headers, params={"page": page})
+            response = requests.get(
+                url,
+                headers=headers,
+                params={"site": "ct", "page": page, "format": "json"},
+            )
             logger.debug("Fetching listing of page {}".format(page))
+            with open("/tmp/page-{}.json".format(page), "w") as f:
+                f.write(str(response.content.decode("utf-8")))
+
             page = page + 1
 
             if total_product_count is None:
-                total_product_count = int(response.json()["totalResults"])
+                total_product_count = int(response.json()["query"]["total-results"])
                 logger.info("{} products to list".format(total_product_count))
 
-            for product in response.json()["products"]:
-                logger.debug("Product listing entry: " + str(product))
+            for product in response.json()["results"]:
                 enumerated_product_count = enumerated_product_count + 1
                 yield ProductListingEntry(
-                    product["code"], product["name"], product["clearance"] == "T"
+                    product["field"]["prod-id"],
+                    product["field"]["prod-name"],
+                    product["field"]["clearance"] == "T",
                 )
-
-
-class ProductInfo:
-    def __init__(self, result):
-        # Keep the raw result so we can extract more information later.
-        self._raw_payload = result
-
-    @property
-    def price(self) -> float:
-        return float(self._raw_payload["Price"])
-
-    @property
-    def sku(self) -> str:
-        return self._raw_payload["SKU"]
-
-    @property
-    def code(self) -> str:
-        return self._raw_payload["Product"]
-
-    @property
-    def quantity(self) -> int:
-        return self._raw_payload["Quantity"]
-
-    @property
-    def description(self) -> str:
-        return self._raw_payload["Description"]
-
-    @property
-    def raw_payload(self) -> str:
-        return str(self._raw_payload)
-
-    def __repr__(self) -> str:
-        return str(self.__dict__)
 
 
 def get_product_infos(
@@ -115,7 +60,6 @@ def get_product_infos(
         "Accept-Encoding": "gzip, deflate",
         "Connection": "keep-alive",
         "Host": "api-triangle.canadiantire.ca",
-        "User-Agent": "HTTPie/2.6.0",
     }
 
     params = {
