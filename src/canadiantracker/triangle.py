@@ -7,6 +7,7 @@ from canadiantracker.model import ProductListingEntry, ProductInfo
 
 logger = logging.getLogger(__name__)
 
+
 class _ProductCategory:
     def __init__(self, name: str, pretty_name: str):
         self._name = name
@@ -20,11 +21,14 @@ class _ProductCategory:
     def pretty_name(self) -> str:
         return self._pretty_name
 
+
 class ProductInventory(Iterable):
     def __init__(self):
         response = ProductInventory._request_page().json()
         self._total_unique_products = int(response["query"]["total-results"])
-        logger.debug("API returned %i unique products to list", self._total_unique_products)
+        logger.debug(
+            "API returned %i unique products to list", self._total_unique_products
+        )
         self._total_products_to_list = 0
 
         self._product_categories = []
@@ -46,7 +50,7 @@ class ProductInventory(Iterable):
             # Limiting ourselves to level 1 and 2 categories appears to allow
             # us to list most products while also limiting the number of products
             # re-listed for nothing.
-            if len(name.split('::')) == 1 or len(name.split('::')) == 2:
+            if len(name.split("::")) == 1 or len(name.split("::")) == 2:
                 self._product_categories.append(_ProductCategory(name, pretty_name))
 
         # This takes a fair amount of time (1 request per category) just to have
@@ -58,10 +62,14 @@ class ProductInventory(Iterable):
         for c in self._product_categories:
             response = ProductInventory._request_page(c).json()
             count = int(response["query"]["total-results"])
-            logger.debug('Product category %s (%s): %i products', c.name, c.pretty_name, count)
+            logger.debug(
+                "Product category %s (%s): %i products", c.name, c.pretty_name, count
+            )
             self._total_products_to_list = self._total_products_to_list + count
 
-        logger.debug("%i products will be listed (with duplicates)", self._total_products_to_list)
+        logger.debug(
+            "%i products will be listed (with duplicates)", self._total_products_to_list
+        )
 
     @staticmethod
     def _request_page(category: _ProductCategory = None, page_number: int = 1) -> dict:
@@ -103,13 +111,25 @@ class ProductInventory(Iterable):
             to_iterate_in_category = None
             self._currentCategory = category
 
-            while to_iterate_in_category is None or iterated_in_category < to_iterate_in_category:
-                response = ProductInventory._request_page(category, page_number=page).json()
+            while (
+                to_iterate_in_category is None
+                or iterated_in_category < to_iterate_in_category
+            ):
+                response = ProductInventory._request_page(
+                    category, page_number=page
+                ).json()
 
                 if to_iterate_in_category is None:
                     to_iterate_in_category = int(response["query"]["total-results"])
 
-                logger.debug("Fetching listing of category {} (page {}, {}/{})".format(category.pretty_name, page, iterated_in_category, to_iterate_in_category))
+                logger.debug(
+                    "Fetching listing of category {} (page {}, {}/{})".format(
+                        category.pretty_name,
+                        page,
+                        iterated_in_category,
+                        to_iterate_in_category,
+                    )
+                )
 
                 for product in response["results"]:
                     iterated_in_category = iterated_in_category + 1
@@ -120,6 +140,7 @@ class ProductInventory(Iterable):
                     )
 
                 page = page + 1
+
 
 class ProductLedger(Iterable):
     def __init__(self, products: Iterator[ProductListingEntry]):
@@ -155,7 +176,7 @@ class ProductLedger(Iterable):
             "Accept-Encoding": "gzip, deflate",
             "Connection": "keep-alive",
             "Host": "api-triangle.canadiantire.ca",
-            "User-Agent": ProductLedger._user_agent()
+            "User-Agent": ProductLedger._user_agent(),
         }
 
         params = {

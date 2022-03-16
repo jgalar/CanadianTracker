@@ -131,7 +131,9 @@ def scrape_prices(db_path: str, older_than: int) -> None:
         # output very spammy
         progress_bar_settings["bar_template"] = ""
 
-    with click.progressbar(repository.products, length=repository.products.count(), **progress_bar_settings) as products:
+    with click.progressbar(
+        repository.products, length=repository.products.count(), **progress_bar_settings
+    ) as products:
         ledger = canadiantracker.triangle.ProductLedger(products)
         repository.add_product_price_samples(ledger)
 
