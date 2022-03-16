@@ -54,6 +54,7 @@ class ProductInventory(Iterable):
                     product["field"]["clearance"] == "T",
                 )
 
+
 class ProductLedger(Iterable):
     def __init__(self, products: Iterator[ProductListingEntry]):
         self._products = products
@@ -88,7 +89,7 @@ class ProductLedger(Iterable):
             "Accept-Encoding": "gzip, deflate",
             "Connection": "keep-alive",
             "Host": "api-triangle.canadiantire.ca",
-            "User-Agent": ProductLedger._user_agent()
+            "User-Agent": ProductLedger._user_agent(),
         }
 
         params = {
