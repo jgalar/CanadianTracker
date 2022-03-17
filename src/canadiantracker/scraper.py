@@ -1,7 +1,4 @@
 import click
-import requests
-import json
-import pprint
 import sys
 import logging
 import textwrap

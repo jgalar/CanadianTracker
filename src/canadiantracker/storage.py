@@ -1,7 +1,6 @@
 import sqlalchemy
 import sqlalchemy.orm
 import canadiantracker.model
-import sys
 import os
 import datetime
 from collections.abc import Iterator
