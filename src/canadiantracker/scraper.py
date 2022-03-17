@@ -5,6 +5,7 @@ import pprint
 import sys
 import logging
 import textwrap
+from typing import Optional
 
 import canadiantracker.triangle
 import canadiantracker.storage
@@ -12,6 +13,7 @@ import canadiantracker.model
 
 
 logger = logging.getLogger(__name__)
+logging_to_terminal = False
 
 
 def print_welcome() -> None:
@@ -32,7 +34,8 @@ def print_welcome() -> None:
 
 @click.group()
 @click.option("-d", "--debug", is_flag=True, help="Set logging level to DEBUG")
-def cli(debug: bool, args=None) -> None:
+@click.option("--log-file", help="Log file path")
+def cli(debug: bool, log_file: Optional[str], args=None) -> None:
     """
     CanadianTracker tracks the inventory and prices of your favorite canadian
     retailer using the internal API that powers canadiantire.ca.
@@ -48,7 +51,12 @@ def cli(debug: bool, args=None) -> None:
     Use --help on any of the commands for more information on their role and options.
     """
     print_welcome()
-    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    logging.basicConfig(
+        level=logging.DEBUG if debug else logging.INFO, filename=log_file
+    )
+
+    global logging_to_terminal
+    logging_to_terminal = log_file is None
 
 
 def progress_bar_product_name(
@@ -85,7 +93,7 @@ def scrape_inventory(db_path: str) -> None:
         else None,
     }
 
-    if logging.root.level == logging.DEBUG:
+    if logging.root.level == logging.DEBUG and logging_to_terminal:
         # Deactivate progress bar in debug mode since its updates make the
         # output very spammy
         progress_bar_settings["bar_template"] = ""
@@ -129,7 +137,7 @@ def scrape_prices(db_path: str, older_than: int) -> None:
         else None,
     }
 
-    if logging.root.level == logging.DEBUG:
+    if logging.root.level == logging.DEBUG and logging_to_terminal:
         # Deactivate progress bar in debug mode since its updates make the
         # output very spammy
         progress_bar_settings["bar_template"] = ""
