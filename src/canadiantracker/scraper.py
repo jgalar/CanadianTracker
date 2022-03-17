@@ -2,9 +2,12 @@ import click
 import requests
 import json
 import pprint
+import shlex
 import sys
 import logging
 import textwrap
+import tempfile
+import uvicorn
 from typing import Optional
 
 import canadiantracker.triangle
@@ -147,6 +150,40 @@ def scrape_prices(db_path: str, older_than: int) -> None:
     ) as products:
         ledger = canadiantracker.triangle.ProductLedger(products)
         repository.add_product_price_samples(ledger)
+
+
+@cli.command(
+    name="serve-http", short_help="serve the web UI and REST API on an HTTP server"
+)
+@click.option(
+    "--db-path",
+    required=True,
+    type=str,
+    metavar="PATH",
+    help="Path to sqlite db instance",
+)
+@click.option("-p", "--port", help="HTTP server listen port", default=5000)
+def serve_http(db_path: str, port: int) -> None:
+    """
+    Serve the web UI and REST API on an HTTP server
+    """
+    with tempfile.NamedTemporaryFile(
+        prefix="ctscraper-http-", suffix=".env", mode="w"
+    ) as env_file:
+        debug = logging.root.level == logging.DEBUG
+
+        db_path = shlex.quote(db_path)
+        print(f"CTSCRAPER_HTTP_DB_PATH={db_path}", file=env_file)
+        env_file.flush()
+
+        uvicorn.run(
+            "canadiantracker.http:app",
+            host="127.0.0.1",
+            port=port,
+            log_level="debug" if debug else "info",
+            reload=debug,
+            env_file=env_file.name,
+        )
 
 
 if __name__ == "__main__":
