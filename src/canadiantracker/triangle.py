@@ -12,6 +12,7 @@ class _ProductCategory:
     def __init__(self, name: str, pretty_name: str):
         self._name = name
         self._pretty_name = pretty_name
+        self._num_levels = len(name.split("::"))
 
     @property
     def name(self) -> str:
@@ -20,6 +21,11 @@ class _ProductCategory:
     @property
     def pretty_name(self) -> str:
         return self._pretty_name
+
+    @property
+    def num_levels(self) -> int:
+        """Number of levels in the category."""
+        return self._num_levels
 
 
 class ProductInventory(Iterable):
@@ -53,8 +59,9 @@ class ProductInventory(Iterable):
             # Limiting ourselves to level 1 and 2 categories appears to allow
             # us to list most products while also limiting the number of products
             # re-listed for nothing.
-            if len(name.split("::")) == 1 or len(name.split("::")) == 2:
-                self._product_categories.append(_ProductCategory(name, pretty_name))
+            cat = _ProductCategory(name, pretty_name)
+            if cat.num_levels == 1 or cat.num_levels == 2:
+                self._product_categories.append(cat)
 
                 if (
                     dev_max_categories != 0
@@ -93,7 +100,7 @@ class ProductInventory(Iterable):
         params = {"site": "ct", "page": page_number, "format": "json"}
 
         if category:
-            params["x1"] = "ast-id-level-1"
+            params["x1"] = f"ast-id-level-{category.num_levels}"
             params["q1"] = category.name
 
         return requests.get(
