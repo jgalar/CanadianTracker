@@ -90,7 +90,6 @@ class _SQLite3ProductRepository(ProductRepository):
         logger.debug("Creating SQLite3ProductRepository with url `%s`", db_url)
         self._engine = sqlalchemy.create_engine(db_url, echo=False)
         self._session = sqlalchemy.orm.sessionmaker(bind=self._engine)()
-        sqlalchemy_base.metadata.create_all(self._engine)
 
     def __del__(self):
         self._session.commit()
