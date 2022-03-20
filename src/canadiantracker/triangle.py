@@ -23,7 +23,10 @@ class _ProductCategory:
 
 
 class ProductInventory(Iterable):
-    def __init__(self):
+    def __init__(
+        self, dev_max_categories: int = 0, dev_max_pages_per_category: int = 0
+    ):
+        self._dev_max_pages_per_category = dev_max_pages_per_category
         response = ProductInventory._request_page().json()
         self._total_unique_products = int(response["query"]["total-results"])
         logger.debug(
@@ -52,6 +55,12 @@ class ProductInventory(Iterable):
             # re-listed for nothing.
             if len(name.split("::")) == 1 or len(name.split("::")) == 2:
                 self._product_categories.append(_ProductCategory(name, pretty_name))
+
+                if (
+                    dev_max_categories != 0
+                    and len(self._product_categories) == dev_max_categories
+                ):
+                    break
 
         # This takes a fair amount of time (1 request per category) just to have
         # an accurate number of items fed to the progress bar...
@@ -138,6 +147,12 @@ class ProductInventory(Iterable):
                         product["field"]["prod-name"],
                         product["field"]["clearance"] == "T",
                     )
+
+                if (
+                    self._dev_max_pages_per_category != 0
+                    and self._dev_max_pages_per_category == page
+                ):
+                    break
 
                 page = page + 1
 
