@@ -98,6 +98,22 @@ class _SQLite3ProductRepository(ProductRepository):
     def products(self) -> Iterator[canadiantracker.model.ProductListingEntry]:
         return self._session.query(_StorageProductListingEntry)
 
+    def get_product_listing_by_code(
+        self, product_id: str
+    ) -> canadiantracker.model.ProductListingEntry:
+        result = self.products.filter(_StorageProductListingEntry.code == product_id)
+        return result.first() if result else None
+
+    def get_product_info_samples_by_code(
+        self, product_id: str
+    ) -> Iterator[canadiantracker.model.ProductInfoSample]:
+        result = (
+            self._session.query(_StorageProductSample)
+            .filter(_StorageProductSample.code == product_id)
+            .order_by(_StorageProductSample.sample_time)
+        )
+        return result.all() if result else None
+
     def add_product_listing_entry(
         self, product_listing_entry: canadiantracker.model.ProductListingEntry
     ) -> None:

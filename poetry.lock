@@ -144,6 +144,17 @@ python-versions = ">=3.6"
 pyparsing = ">=2.0.2,<3.0.5 || >3.0.5"
 
 [[package]]
+name = "plotext"
+version = "4.2.0"
+description = "plotext plots directly on terminal"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[package.extras]
+image = ["pillow (>=8.4)"]
+
+[[package]]
 name = "pluggy"
 version = "0.13.1"
 description = "plugin and hook calling mechanisms for python"
@@ -269,7 +280,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "d5e4f70e2104093b3a6cfff0b8fc04e123812c19465853201c841a5a7dd1eb05"
+content-hash = "3f0e020c49b221d00069917a991e50cc1ad4129db570e66aa0c2564afcfa764d"
 
 [metadata.files]
 alembic = [
@@ -417,6 +428,10 @@ more-itertools = [
 packaging = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
     {file = "packaging-21.3.tar.gz", hash = "sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb"},
+]
+plotext = [
+    {file = "plotext-4.2.0-py3-none-any.whl", hash = "sha256:e005ce2e6381df518008d7c3acab0971eeade65912d5f1342c6cb02d035c16be"},
+    {file = "plotext-4.2.0.tar.gz", hash = "sha256:fccb794238f9001d835b158ae2a1f540757a58d4ebb406d99bd68f75f5f7a81e"},
 ]
 pluggy = [
     {file = "pluggy-0.13.1-py2.py3-none-any.whl", hash = "sha256:966c145cd83c96502c3c3868f50408687b38434af77734af1e9ca461a4081d2d"},

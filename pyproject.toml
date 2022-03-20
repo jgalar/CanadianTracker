@@ -10,6 +10,7 @@ click = "^8.0.3"
 requests = "^2.26.0"
 SQLAlchemy = "^1.4.29"
 fake-useragent = "^0.1.11"
+plotext = "^4.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
@@ -21,3 +22,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 ctscraper = "canadiantracker.scraper:cli"
+ctquery = "canadiantracker.query:cli"
