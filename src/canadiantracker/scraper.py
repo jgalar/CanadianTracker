@@ -62,7 +62,21 @@ def progress_bar_product_name(
     metavar="PATH",
     help="Path to sqlite db instance",
 )
-def scrape_inventory(db_path: str) -> None:
+@click.option(
+    "--dev-max-categories",
+    default=0,
+    help="Maximum number of categories to fetch (developer option)",
+    metavar="NUM",
+)
+@click.option(
+    "--dev-max-pages-per-category",
+    default=0,
+    help="Maximum number of pages to fetch per category (developer option)",
+    metavar="NUM",
+)
+def scrape_inventory(
+    db_path: str, dev_max_categories: int, dev_max_pages_per_category: int
+) -> None:
     """
     Fetch static product properties.
     """
@@ -70,7 +84,10 @@ def scrape_inventory(db_path: str) -> None:
     repository = canadiantracker.storage.get_product_repository_from_sqlite_file(
         db_path, should_create=True
     )
-    inventory = canadiantracker.triangle.ProductInventory()
+    inventory = canadiantracker.triangle.ProductInventory(
+        dev_max_categories=dev_max_categories,
+        dev_max_pages_per_category=dev_max_pages_per_category,
+    )
 
     progress_bar_settings = {
         "label": "Scraping inventory",
