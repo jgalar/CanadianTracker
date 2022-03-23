@@ -23,4 +23,23 @@ easily run the project from the development tree:
 
   # Install all dependancies to a virtual environment
   $ poetry install
-  $ poetry run ctscraper
+
+
+You then need to initialize the database, using `alembic`:
+
+.. code-block:: console
+
+   $ CTRACKER_DB_PATH=inventory.sqlite poetry run alembic upgrade head
+
+You are then ready to start scraping the inventory, to get an up-to-date list
+of products:
+
+.. code-block:: console:
+
+  $ poetry run ctscraper scrape-inventory --db-path inventory.sqlite
+
+Once this is done, you can scrape the prices of the products in the inventory:
+
+.. code-block:: console:
+
+  $ poetry run ctscraper scrape-prices --db-path inventory.sqlite
