@@ -16,12 +16,12 @@ Use ``--help`` on any of the commands for more information on their role and opt
 Getting Started
 ---------------
 
-Canadian Tracker uses `poetry` to manage its dependancies. As such, you can
+Canadian Tracker uses `poetry` to manage its dependencies. As such, you can
 easily run the project from the development tree:
 
 .. code-block:: console
 
-  # Install all dependancies to a virtual environment
+  # Install all dependencies to a virtual environment
   $ poetry install
 
 
