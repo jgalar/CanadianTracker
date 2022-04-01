@@ -130,7 +130,7 @@ class _SQLite3ProductRepository(ProductRepository):
         )
         new_entry = _StorageProductListingEntry(
             product_listing_entry.name,
-            product_listing_entry.code,
+            product_listing_entry.code.upper(),
             product_listing_entry.is_in_clearance,
         )
 
@@ -145,7 +145,7 @@ class _SQLite3ProductRepository(ProductRepository):
     ) -> None:
         for product in product_infos:
             new_sample = _StorageProductSample(
-                code=product.code,
+                code=product.code.upper(),
                 price=product.price,
                 in_promo=product.in_promo,
                 raw_payload=product.raw_payload,
