@@ -11,10 +11,15 @@ requests = "^2.26.0"
 SQLAlchemy = "^1.4.29"
 fake-useragent = "^0.1.11"
 plotext = "^4.2.0"
+uvicorn = "^0.17.6"
+fastapi = "^0.75.0"
+python-dotenv = "^0.19.2"
+Jinja2 = "^3.1.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
 alembic = "^1.7.7"
+black = {version = "^22.3.0", allow-prereleases = true}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -23,3 +28,4 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 ctscraper = "canadiantracker.scraper:cli"
 ctquery = "canadiantracker.query:cli"
+ctserver = "canadiantracker.server:cli"

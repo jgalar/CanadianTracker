@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    {% include 'libs.html' %}
+
+    <script>
+        $(document).ready(function () {
+            $('#product-table').DataTable({
+                ajax: { url: '/api/products', dataSrc: '' },
+                columns: [
+                    {
+                        data: 'name',
+                        title: 'Name',
+                        render: (data, type, row, meta) => {
+                            return '<a href="/products/' + row.code + '">' + data + '</a>';
+                        }
+                    },
+                    {
+                        data: 'code',
+                        title: 'Code'
+                    }
+                ],
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <table id="product-table" class="table table-striped table-bordered dt-responsive nowrap">
+    </table>
+</body>
+
+</html>

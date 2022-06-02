@@ -75,6 +75,20 @@ class ProductRepository:
         # Use a factory method to get an instance.
         raise NotImplementedError
 
+    @property
+    def products(self) -> Iterator[canadiantracker.model.ProductListingEntry]:
+        raise NotImplementedError
+
+    def get_product_listing_by_code(
+        self, product_id: str
+    ) -> canadiantracker.model.ProductListingEntry:
+        raise NotImplementedError
+
+    def get_product_info_samples_by_code(
+        self, product_id: str
+    ) -> Iterator[canadiantracker.model.ProductInfoSample]:
+        raise NotImplementedError
+
     def add_product_listing_entry(
         self, product_listing_entry: canadiantracker.model.ProductListingEntry
     ) -> None:
