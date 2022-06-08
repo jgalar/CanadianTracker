@@ -86,13 +86,17 @@ class ProductRepository:
 
 class _SQLite3ProductRepository(ProductRepository):
     def __init__(self, path: str):
+        if not os.path.exists(path):
+            raise RuntimeError(f"Database {path} does not exist.")
+
         db_url = "sqlite:///" + os.path.abspath(path)
         logger.debug("Creating SQLite3ProductRepository with url `%s`", db_url)
         self._engine = sqlalchemy.create_engine(db_url, echo=False)
         self._session = sqlalchemy.orm.sessionmaker(bind=self._engine)()
 
     def __del__(self):
-        self._session.commit()
+        if hasattr(self, '_session'):
+            self._session.commit()
 
     @property
     def products(self) -> Iterator[canadiantracker.model.ProductListingEntry]:
