@@ -31,10 +31,11 @@ class ProductInfo:
 
 
 class ProductListingEntry:
-    def __init__(self, code: str, name: str, is_in_clearance: bool):
+    def __init__(self, code: str, name: str, is_in_clearance: bool, url: str):
         self._code = code
         self._name = name
         self._is_in_clearance = is_in_clearance
+        self._url = url
 
     def __str__(self) -> str:
         return "[{code}] {name}".format(code=self._code, name=self._name)
@@ -50,6 +51,10 @@ class ProductListingEntry:
     @property
     def is_in_clearance(self):
         return self._is_in_clearance
+
+    @property
+    def url(self):
+        return self._url
 
     def __repr__(self):
         props = {
