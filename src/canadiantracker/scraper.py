@@ -82,7 +82,7 @@ def scrape_inventory(
     """
 
     repository = canadiantracker.storage.get_product_repository_from_sqlite_file(
-        db_path, should_create=True
+        db_path
     )
     inventory = canadiantracker.triangle.ProductInventory(
         dev_max_categories=dev_max_categories,
@@ -130,7 +130,7 @@ def scrape_prices(db_path: str, older_than: int) -> None:
     Fetch current product prices.
     """
     repository = canadiantracker.storage.get_product_repository_from_sqlite_file(
-        db_path, should_create=True
+        db_path
     )
 
     progress_bar_settings = {

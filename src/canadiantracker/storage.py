@@ -161,7 +161,5 @@ class _SQLite3ProductRepository(ProductRepository):
             self._session.add(new_sample)
 
 
-def get_product_repository_from_sqlite_file(
-    path: str, should_create: bool
-) -> ProductRepository:
+def get_product_repository_from_sqlite_file(path: str) -> ProductRepository:
     return _SQLite3ProductRepository(path)
