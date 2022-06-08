@@ -57,7 +57,7 @@ def price_history(db_path: str, format: str, product_code: str) -> None:
     product_code = product_code.upper()
 
     repository = canadiantracker.storage.get_product_repository_from_sqlite_file(
-        db_path, should_create=False
+        db_path
     )
 
     if repository.get_product_listing_by_code(product_code) is None:
