@@ -12,7 +12,7 @@ app = FastAPI()
 _db_path = os.environ["CTSERVER_SERVE_DB_PATH"]
 _templates = Jinja2Templates(directory=os.path.dirname(__file__) + "/web/templates")
 _repository = canadiantracker.storage.get_product_repository_from_sqlite_file(
-    _db_path, should_create=False
+    _db_path
 )
 
 
