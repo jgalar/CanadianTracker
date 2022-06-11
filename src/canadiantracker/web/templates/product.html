@@ -11,9 +11,22 @@
                 const xs = [];
                 const ys = [];
 
+                let i = 0;
+                let last_price = 0;
                 for (const sample of samples) {
-                    xs.push(sample.sample_time);
-                    ys.push(sample.product_info.price)
+                    time = sample.sample_time;
+                    price = sample.product_info.price;
+
+                    /* Insert the last price to render changes as "steps". */
+                    if (i && price != last_price) {
+                        xs.push(time);
+                        ys.push(last_price)
+                    }
+
+                    xs.push(time);
+                    ys.push(price);
+                    last_price = price;
+                    i++;
                 }
                 console.log(samples);
                 console.log(xs);
