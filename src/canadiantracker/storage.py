@@ -167,7 +167,7 @@ class _SQLite3ProductRepository(ProductRepository):
             # If the URL is NULL, set it.
             if existing_entry.url is None:
                 logger.debug("Updating URL of existing product")
-                existing_entry.url = product_listing_entry._url
+                existing_entry.url = product_listing_entry.url
 
             # If the SKU is NULL, set it.
             if existing_entry.sku is None:
