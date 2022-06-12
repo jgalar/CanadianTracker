@@ -113,7 +113,7 @@ class _SQLite3ProductRepository(ProductRepository):
         self._session = sqlalchemy.orm.sessionmaker(bind=self._engine)()
 
     def __del__(self):
-        if hasattr(self, '_session'):
+        if hasattr(self, "_session"):
             self._session.commit()
 
     @property

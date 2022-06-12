@@ -11,9 +11,7 @@ from canadiantracker.model import ProductInfo, ProductInfoSample, ProductListing
 app = FastAPI()
 _db_path = os.environ["CTSERVER_SERVE_DB_PATH"]
 _templates = Jinja2Templates(directory=os.path.dirname(__file__) + "/web/templates")
-_repository = canadiantracker.storage.get_product_repository_from_sqlite_file(
-    _db_path
-)
+_repository = canadiantracker.storage.get_product_repository_from_sqlite_file(_db_path)
 
 
 @app.get("/api/products")
@@ -54,9 +52,7 @@ async def api_product_samples(product_id):
 @app.get("/", response_class=HTMLResponse)
 async def products(request: Request):
 
-    return _templates.TemplateResponse(
-        "index.html", {"request": request}
-    )
+    return _templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/products/{product_id}", response_class=HTMLResponse)
