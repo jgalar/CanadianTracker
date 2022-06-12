@@ -154,6 +154,7 @@ class ProductInventory(Iterable):
                         product["field"]["prod-name"],
                         product["field"]["clearance"] == "T",
                         product["field"]["pdp-url"],
+                        product["field"]["sku-id"],
                     )
 
                 if (

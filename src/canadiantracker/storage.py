@@ -35,13 +35,15 @@ class _StorageProductListingEntry(sqlalchemy_base):
     # this will be used to prune stale product entries
     last_listed = sqlalchemy.Column(sqlalchemy.DateTime)
     url = sqlalchemy.Column(sqlalchemy.String)
+    sku = sqlalchemy.Column(sqlalchemy.String)
 
-    def __init__(self, name: str, code: str, is_in_clearance: bool, url: str):
+    def __init__(self, name: str, code: str, is_in_clearance: bool, url: str, sku: str):
         self.name = name
         self.code = code
         self.is_in_clearance = is_in_clearance
         self.last_listed = datetime.datetime.now()
         self.url = url
+        self.sku = sku
 
 
 class _StorageProductSample(sqlalchemy_base):
@@ -153,6 +155,7 @@ class _SQLite3ProductRepository(ProductRepository):
             product_listing_entry.code.upper(),
             product_listing_entry.is_in_clearance,
             product_listing_entry.url,
+            product_listing_entry.sku,
         )
 
         if not existing_entry:
@@ -165,6 +168,11 @@ class _SQLite3ProductRepository(ProductRepository):
             if existing_entry.url is None:
                 logger.debug("Updating URL of existing product")
                 existing_entry.url = product_listing_entry._url
+
+            # If the SKU is NULL, set it.
+            if existing_entry.sku is None:
+                logger.debug("Updating SKU of existing product")
+                existing_entry.sku = product_listing_entry.sku
 
     def add_product_price_samples(
         self, product_infos: Iterator[canadiantracker.model.ProductInfo]
