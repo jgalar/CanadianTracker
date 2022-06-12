@@ -90,9 +90,6 @@ def plot_history(
         for sample in product_samples
     ]
 
-    prices = [10, 10, 10, 20, 20]
-    dates = ["10/03/2022", "11/03/2022", "12/03/2022", "12/03/2022", "13/03/2022"]
-
     prices = []
     dates = []
 
