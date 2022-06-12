@@ -31,11 +31,12 @@ class ProductInfo:
 
 
 class ProductListingEntry:
-    def __init__(self, code: str, name: str, is_in_clearance: bool, url: str):
+    def __init__(self, code: str, name: str, is_in_clearance: bool, url: str, sku: str):
         self._code = code
         self._name = name
         self._is_in_clearance = is_in_clearance
         self._url = url
+        self._sku = sku
 
     def __str__(self) -> str:
         return "[{code}] {name}".format(code=self._code, name=self._name)
@@ -55,6 +56,10 @@ class ProductListingEntry:
     @property
     def url(self):
         return self._url
+
+    @property
+    def sku(self):
+        return self._sku
 
     def __repr__(self):
         props = {
