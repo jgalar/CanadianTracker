@@ -55,9 +55,18 @@ async def products(request: Request):
     return _templates.TemplateResponse("index.html", {"request": request})
 
 
+def sanitize_sku(listing: ProductListingEntry) -> str:
+    if not listing.sku:
+        return listing.code
+
+    return listing.sku.split("|")[0]
+
+
 @app.get("/products/{product_id}", response_class=HTMLResponse)
 async def one_product(request: Request, product_id):
     listing = _repository.get_product_listing_by_code(product_id)
+
+    listing.sku = sanitize_sku(listing)
 
     return _templates.TemplateResponse(
         "product.html", {"request": request, "listing": listing}
