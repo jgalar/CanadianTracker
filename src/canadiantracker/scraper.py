@@ -2,6 +2,9 @@ import click
 import sys
 import logging
 import textwrap
+from canadiantracker.cli_utils import (
+    get_product_repository_from_sqlite_file_check_version,
+)
 
 import canadiantracker.triangle
 import canadiantracker.storage
@@ -81,9 +84,7 @@ def scrape_inventory(
     Fetch static product properties.
     """
 
-    repository = canadiantracker.storage.get_product_repository_from_sqlite_file(
-        db_path
-    )
+    repository = get_product_repository_from_sqlite_file_check_version(db_path)
     inventory = canadiantracker.triangle.ProductInventory(
         dev_max_categories=dev_max_categories,
         dev_max_pages_per_category=dev_max_pages_per_category,
@@ -129,8 +130,10 @@ def scrape_prices(db_path: str, older_than: int) -> None:
     """
     Fetch current product prices.
     """
-    repository = canadiantracker.storage.get_product_repository_from_sqlite_file(
-        db_path
+    repository = (
+        canadiantracker.storage.get_product_repository_from_sqlite_file_check_version(
+            db_path
+        )
     )
 
     progress_bar_settings = {

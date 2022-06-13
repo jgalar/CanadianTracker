@@ -21,6 +21,12 @@ sqlalchemy_metadata = sqlalchemy.MetaData(
 sqlalchemy_base = sqlalchemy.orm.declarative_base(metadata=sqlalchemy_metadata)
 
 
+class _AlembicRevision(sqlalchemy_base):
+    __tablename__ = "alembic_version"
+
+    version_num = sqlalchemy.Column(sqlalchemy.String, primary_key=True)
+
+
 class _StorageProductListingEntry(sqlalchemy_base):
     # static product properties
     __tablename__ = "products_static"
@@ -102,15 +108,43 @@ class ProductRepository:
         raise NotImplementedError
 
 
-class _SQLite3ProductRepository(ProductRepository):
-    def __init__(self, path: str):
-        if not os.path.exists(path):
-            raise RuntimeError(f"Database {path} does not exist.")
+class InvalidDatabaseRevisionException(Exception):
+    def __init__(self, msg):
+        self._msg = msg
 
+    def __str__(self):
+        return f"Failed to validate database revision: {self._msg}"
+
+
+class _SQLite3ProductRepository(ProductRepository):
+    ALEMBIC_REVISION = "8fe398b58b5f"
+
+    def __init__(self, path: str):
         db_url = "sqlite:///" + os.path.abspath(path)
         logger.debug("Creating SQLite3ProductRepository with url `%s`", db_url)
         self._engine = sqlalchemy.create_engine(db_url, echo=False)
-        self._session = sqlalchemy.orm.sessionmaker(bind=self._engine)()
+        inspector: sqlalchemy.engine.reflection.Inspector = sqlalchemy.inspect(
+            self._engine
+        )
+        if not inspector.has_table("alembic_version"):
+            raise InvalidDatabaseRevisionException(
+                "database is missing the alembic_version table"
+            )
+
+        self._session: sqlalchemy.orm.Session = sqlalchemy.orm.sessionmaker(
+            bind=self._engine
+        )()
+
+        revs: list[_AlembicRevision] = self._session.query(_AlembicRevision).all()
+
+        if len(revs) == 0:
+            raise InvalidDatabaseRevisionException("table alembic_revision is empty")
+
+        rev = revs[0].version_num
+        if rev != self.ALEMBIC_REVISION:
+            raise InvalidDatabaseRevisionException(
+                f"expected {self.ALEMBIC_REVISION}, got {rev}"
+            )
 
     def __del__(self):
         if hasattr(self, "_session"):

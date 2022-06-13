@@ -7,6 +7,9 @@ import logging
 import textwrap
 import decimal
 from collections.abc import Iterator
+from canadiantracker.cli_utils import (
+    get_product_repository_from_sqlite_file_check_version,
+)
 
 import canadiantracker.storage
 import canadiantracker.model
@@ -56,9 +59,7 @@ def price_history(db_path: str, format: str, product_code: str) -> None:
     # capitalization patterns by the website and APIs.
     product_code = product_code.upper()
 
-    repository = canadiantracker.storage.get_product_repository_from_sqlite_file(
-        db_path
-    )
+    repository = get_product_repository_from_sqlite_file_check_version(db_path)
 
     if repository.get_product_listing_by_code(product_code) is None:
         click.echo(
