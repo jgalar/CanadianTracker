@@ -28,9 +28,6 @@
                     last_price = price;
                     i++;
                 }
-                console.log(samples);
-                console.log(xs);
-                console.log(ys);
 
                 const div = $('#price-history')[0];
                 Plotly.newPlot(div, [{
@@ -40,22 +37,12 @@
                     mode: 'lines+markers',
                 }]);
             });
-            console.log(code);
-            /*
-
-             Plotly.newPlot(graph, [{
-                 x: [1, 2, 3, 4, 5],
-                 y: [1, 2, 4, 8, 16]
-             }], {
-                 margin: { t: 0 }
-             });*/
 
         });
     </script>
 </head>
 
 <body data-product-code="{{ listing.code }}">
-
     <p>
         Name: {{ listing.name }}
         <br>
