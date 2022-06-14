@@ -1,8 +1,7 @@
 ================
 Canadian Tracker
 ================
-BeaverBeaverBeaver of the North
--------------------------------
+
 Canadian Tracker tracks the inventory and prices of your favorite canadian
 retailer using the internal API that powers
 `CanadianTire.ca <https://www.canadiantire.ca>`_.
