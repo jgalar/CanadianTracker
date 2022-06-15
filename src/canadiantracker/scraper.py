@@ -131,7 +131,7 @@ def scrape_prices(db_path: str, older_than: int) -> None:
     Fetch current product prices.
     """
     repository = (
-        canadiantracker.storage.get_product_repository_from_sqlite_file_check_version(
+        get_product_repository_from_sqlite_file_check_version(
             db_path
         )
     )
