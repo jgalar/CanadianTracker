@@ -2,7 +2,7 @@ import datetime
 
 
 class ProductInfo:
-    def __init__(self, result):
+    def __init__(self, result: dict):
         # Keep the raw result so we can extract more information later.
         self._raw_payload = result
 
@@ -42,23 +42,23 @@ class ProductListingEntry:
         return "[{code}] {name}".format(code=self._code, name=self._name)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def code(self):
+    def code(self) -> str:
         return self._code
 
     @property
-    def is_in_clearance(self):
+    def is_in_clearance(self) -> bool:
         return self._is_in_clearance
 
     @property
-    def url(self):
+    def url(self) -> str:
         return self._url
 
     @property
-    def sku(self):
+    def sku(self) -> str:
         return self._sku
 
     def __repr__(self):

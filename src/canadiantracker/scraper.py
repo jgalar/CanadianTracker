@@ -32,7 +32,7 @@ def print_welcome() -> None:
 
 @click.group()
 @click.option("-d", "--debug", is_flag=True, help="Set logging level to DEBUG")
-def cli(debug: bool, args=None) -> None:
+def cli(debug: bool) -> None:
     """
     CanadianTracker tracks the inventory and prices of your favorite canadian
     retailer using the internal API that powers canadiantire.ca.

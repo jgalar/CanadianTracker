@@ -1,3 +1,4 @@
+from typing import Generator
 import requests
 import logging
 import fake_useragent
@@ -175,7 +176,7 @@ class ProductLedger(Iterable):
         return len(self._products)
 
     @staticmethod
-    def _batches(it: Iterator, batch_max_size: int):
+    def _batches(it: Iterator, batch_max_size: int) -> Generator[list, None, None]:
         batch = []
         for element in it:
             batch.append(element)

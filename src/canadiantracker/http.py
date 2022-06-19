@@ -14,7 +14,7 @@ _repository = canadiantracker.storage.get_product_repository_from_sqlite_file(_d
 
 
 @app.get("/api/products")
-async def api_products():
+async def api_products() -> list[dict]:
     ret = []
 
     for p in _repository.products:
@@ -28,14 +28,14 @@ async def api_products():
     return ret
 
 
-def serialize_product_info(info: ProductInfo):
+def serialize_product_info(info: ProductInfo) -> dict:
     return {
         "price": info.price,
         "in_promo": info.in_promo,
     }
 
 
-def serialize_product_info_sample(sample: ProductInfoSample):
+def serialize_product_info_sample(sample: ProductInfoSample) -> dict:
     return {
         "sample_time": sample.sample_time,
         "product_info": serialize_product_info(sample),
@@ -43,13 +43,13 @@ def serialize_product_info_sample(sample: ProductInfoSample):
 
 
 @app.get("/api/products/{product_id}/samples")
-async def api_product_samples(product_id):
+async def api_product_samples(product_id: str) -> list[dict]:
     samples = _repository.get_product_info_samples_by_code(product_id)
     return [serialize_product_info_sample(sample) for sample in samples]
 
 
 @app.get("/", response_class=HTMLResponse)
-async def products(request: Request):
+async def products(request: Request) -> Jinja2Templates.TemplateResponse:
 
     return _templates.TemplateResponse("index.html", {"request": request})
 
@@ -62,7 +62,9 @@ def sanitize_sku(listing: ProductListingEntry) -> str:
 
 
 @app.get("/products/{product_id}", response_class=HTMLResponse)
-async def one_product(request: Request, product_id):
+async def one_product(
+    request: Request, product_id: str
+) -> Jinja2Templates.TemplateResponse:
     listing = _repository.get_product_listing_by_code(product_id)
 
     listing.sku = sanitize_sku(listing)
