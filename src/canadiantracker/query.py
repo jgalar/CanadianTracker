@@ -1,10 +1,6 @@
 import click
-import requests
-import json
-import pprint
 import sys
 import logging
-import textwrap
 import decimal
 from collections.abc import Iterator
 from canadiantracker.cli_utils import (
