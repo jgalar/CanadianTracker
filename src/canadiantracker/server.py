@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 @click.group()
 @click.option("-d", "--debug", is_flag=True, help="Set logging level to DEBUG")
 @click.option("--log-file", help="Log file path")
-def cli(debug: bool, log_file: Optional[str]):
+def cli(debug: bool, log_file: Optional[str]) -> None:
     logging.basicConfig(
         level=logging.DEBUG if debug else logging.INFO, filename=log_file
     )

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 @click.group()
 @click.option("-d", "--debug", is_flag=True, help="Set logging level to DEBUG")
-def cli(debug: bool, args=None) -> None:
+def cli(debug: bool) -> None:
     """
     CanadianTracker tracks the inventory and prices of your favorite canadian
     retailer using the internal API that powers canadiantire.ca.
@@ -76,7 +76,7 @@ def price_history(db_path: str, format: str, product_code: str) -> None:
 def plot_history(
     product_info: canadiantracker.model.ProductInfo,
     product_samples: Iterator[canadiantracker.model.ProductInfoSample],
-):
+) -> None:
     import plotext as plt
 
     plt.datetime.set_datetime_form(date_form="%d/%m/%Y")
@@ -126,7 +126,7 @@ def plot_history(
 def json_history(
     product_info: canadiantracker.model.ProductInfo,
     product_samples: Iterator[canadiantracker.model.ProductInfoSample],
-):
+) -> None:
     import json
 
     # Since the json package doesn't allow us to dump from a generator and
