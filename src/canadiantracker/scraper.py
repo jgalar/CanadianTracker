@@ -130,11 +130,7 @@ def scrape_prices(db_path: str, older_than: int) -> None:
     """
     Fetch current product prices.
     """
-    repository = (
-        get_product_repository_from_sqlite_file_check_version(
-            db_path
-        )
-    )
+    repository = get_product_repository_from_sqlite_file_check_version(db_path)
 
     progress_bar_settings = {
         "label": "Scraping prices",
