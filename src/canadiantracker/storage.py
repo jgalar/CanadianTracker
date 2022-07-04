@@ -1,3 +1,4 @@
+from __future__ import annotations
 import sqlalchemy
 import sqlalchemy.orm
 import canadiantracker.model
@@ -41,28 +42,57 @@ class _StorageProductListingEntry(sqlalchemy_base):
     # this will be used to prune stale product entries
     last_listed = sqlalchemy.Column(sqlalchemy.DateTime)
     url = sqlalchemy.Column(sqlalchemy.String)
-    sku = sqlalchemy.Column(sqlalchemy.String)
 
-    def __init__(self, name: str, code: str, is_in_clearance: bool, url: str, sku: str):
+    def __init__(self, name: str, code: str, is_in_clearance: bool, url: str):
         self.name = name
         self.code = code
         self.is_in_clearance = is_in_clearance
         self.last_listed = datetime.datetime.now()
         self.url = url
-        self.sku = sku
+
+
+class _StorageSku(sqlalchemy_base):
+    # skus table
+    __tablename__ = "skus"
+
+    index = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    code = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+    formatted_code = sqlalchemy.Column(sqlalchemy.String)
+    product_index = sqlalchemy.Column(
+        sqlalchemy.Integer, sqlalchemy.ForeignKey("products_static.index")
+    )
+
+    product = sqlalchemy.orm.relationship(
+        "_StorageProductListingEntry", back_populates="skus"
+    )
+
+    def __init__(
+        self,
+        code: str,
+        formatted_code: str,
+        product: _StorageProductListingEntry,
+    ):
+        self.code = code
+        self.formatted_code = formatted_code
+        self.product = product
+
+
+_StorageProductListingEntry.skus = sqlalchemy.orm.relationship(
+    "_StorageSku", back_populates="product"
+)
 
 
 class _StorageProductSample(sqlalchemy_base):
     # sample of dynamic product properties
-    __tablename__ = "products_dynamic"
+    __tablename__ = "samples"
 
     index = sqlalchemy.Column(
         sqlalchemy.Integer, primary_key=True, unique=True, index=True
     )
     sample_time = sqlalchemy.Column(sqlalchemy.DateTime, nullable=False)
-    code = sqlalchemy.Column(
-        sqlalchemy.String,
-        sqlalchemy.ForeignKey("products_static.code"),
+    sku_index = sqlalchemy.Column(
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey("skus.index"),
         nullable=False,
         index=True,
     )
@@ -70,12 +100,25 @@ class _StorageProductSample(sqlalchemy_base):
     in_promo = sqlalchemy.Column(sqlalchemy.Boolean, nullable=False)
     raw_payload = sqlalchemy.Column(sqlalchemy.String, nullable=True)
 
-    def __init__(self, code: str, price: float, in_promo: bool, raw_payload: dict):
-        self.code = code
+    sku = sqlalchemy.orm.relationship("_StorageSku", back_populates="samples")
+
+    def __init__(
+        self,
+        price: float,
+        in_promo: bool,
+        raw_payload: dict,
+        sku: _StorageSku,
+    ):
         self.price = price
         self.in_promo = in_promo
         self.raw_payload = str(raw_payload)
         self.sample_time = datetime.datetime.now()
+        self.sku = sku
+
+
+_StorageSku.samples = sqlalchemy.orm.relationship(
+    "_StorageProductSample", back_populates="sku"
+)
 
 
 class ProductRepository:
@@ -87,9 +130,21 @@ class ProductRepository:
     def products(self) -> Iterator[canadiantracker.model.ProductListingEntry]:
         raise NotImplementedError
 
+    @property
+    def skus(self) -> Iterator[canadiantracker.model.Sku]:
+        raise NotImplementedError
+
     def get_product_listing_by_code(
         self, product_id: str
     ) -> canadiantracker.model.ProductListingEntry:
+        raise NotImplementedError
+
+    def get_sku_by_code(self, sku_code: str) -> canadiantracker.model.Sku:
+        raise NotImplementedError
+
+    def get_sku_by_formatted_code(
+        self, sku_formatted_code: str
+    ) -> canadiantracker.model.Sku:
         raise NotImplementedError
 
     def get_product_info_samples_by_code(
@@ -117,7 +172,7 @@ class InvalidDatabaseRevisionException(Exception):
 
 
 class _SQLite3ProductRepository(ProductRepository):
-    ALEMBIC_REVISION = "4e2a96338a6c"
+    ALEMBIC_REVISION = "9169a7c5bda3"
 
     def __init__(self, path: str):
         db_url = "sqlite:///" + os.path.abspath(path)
@@ -154,10 +209,24 @@ class _SQLite3ProductRepository(ProductRepository):
     def products(self) -> Iterator[canadiantracker.model.ProductListingEntry]:
         return self._session.query(_StorageProductListingEntry)
 
+    @property
+    def skus(self) -> Iterator[canadiantracker.model.Sku]:
+        return self._session.query(_StorageSku)
+
     def get_product_listing_by_code(
         self, product_id: str
     ) -> canadiantracker.model.ProductListingEntry:
         result = self.products.filter(_StorageProductListingEntry.code == product_id)
+        return result.first() if result else None
+
+    def get_sku_by_code(self, code: str) -> _StorageSku:
+        result = self.skus.filter(_StorageSku.code == code)
+        return result.first() if result else None
+
+    def get_sku_by_formatted_code(
+        self, sku_formatted_code: str
+    ) -> canadiantracker.model.Sku:
+        result = self.skus.filter(_StorageSku.formatted_code == sku_formatted_code)
         return result.first() if result else None
 
     def get_product_info_samples_by_code(
@@ -176,47 +245,66 @@ class _SQLite3ProductRepository(ProductRepository):
         logger.debug(
             "Attempting to add product: code = `%s`", product_listing_entry.code
         )
-        existing_entry = (
+        entry = (
             self._session.query(_StorageProductListingEntry)
             .filter_by(code=product_listing_entry.code)
             .first()
         )
-        logger.debug(
-            "Product %s present in storage", "is" if existing_entry else "is not"
-        )
-        new_entry = _StorageProductListingEntry(
-            product_listing_entry.name,
-            product_listing_entry.code.upper(),
-            product_listing_entry.is_in_clearance,
-            product_listing_entry.url,
-            product_listing_entry.sku,
-        )
+        logger.debug("Product %s present in storage", "is" if entry else "is not")
 
-        if not existing_entry:
-            self._session.add(new_entry)
+        if not entry:
+            entry = _StorageProductListingEntry(
+                product_listing_entry.name,
+                product_listing_entry.code.upper(),
+                product_listing_entry.is_in_clearance,
+                product_listing_entry.url,
+            )
+            add_entry = True
         else:
+            add_entry = False
+
             # update last listed time
-            setattr(existing_entry, "last_listed", datetime.datetime.now())
+            setattr(entry, "last_listed", datetime.datetime.now())
 
             # If the URL is NULL, set it.
-            if existing_entry.url is None:
+            if entry.url is None:
                 logger.debug("Updating URL of existing product")
-                existing_entry.url = product_listing_entry.url
+                entry.url = product_listing_entry.url
 
-            # If the SKU is NULL, set it.
-            if existing_entry.sku is None:
-                logger.debug("Updating SKU of existing product")
-                existing_entry.sku = product_listing_entry.sku
+        # Get existing SKU codes for that products, to determine which SKUs
+        # are new.
+        existing_sku_codes = set()
+        for sku in entry.skus:
+            existing_sku_codes.add(sku.code)
+
+        for sku in product_listing_entry.skus:
+            if sku.code in existing_sku_codes:
+                logger.debug(f"  SKU {sku.code} already present in storage")
+                continue
+
+            logger.debug(f"  SKU {sku.code} not present in storage, adding")
+            _StorageSku(sku.code, sku.formatted_code, entry)
+
+        if add_entry:
+            self._session.add(entry)
 
     def add_product_price_samples(
         self, product_infos: Iterator[canadiantracker.model.ProductInfo]
     ) -> None:
-        for product in product_infos:
+        for info in product_infos:
+            # Some responses have null as the current proce.
+            price = info.price
+            if price is None:
+                continue
+
+            sku = self.get_sku_by_code(info.code)
+            assert sku
+
             new_sample = _StorageProductSample(
-                code=product.code.upper(),
-                price=product.price,
-                in_promo=product.in_promo,
-                raw_payload=product.raw_payload,
+                price=price,
+                in_promo=info.in_promo,
+                raw_payload=info.raw_payload,
+                sku=sku,
             )
             self._session.add(new_sample)
 

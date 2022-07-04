@@ -1,4 +1,6 @@
+from __future__ import annotations
 import datetime
+from typing import Iterable
 
 
 class ProductInfo:
@@ -7,20 +9,20 @@ class ProductInfo:
         self._raw_payload = result
 
     @property
-    def price(self) -> float:
-        try:
-            price = self._raw_payload["Promo"]["Price"]
-        except KeyError:
-            price = self._raw_payload["Price"]
-        return float(price)
+    def price(self) -> float | None:
+        current_price = self._raw_payload["currentPrice"]
+        if current_price is None:
+            return None
+
+        return float(current_price["value"])
 
     @property
     def code(self) -> str:
-        return self._raw_payload["Product"]
+        return self._raw_payload["code"]
 
     @property
     def in_promo(self) -> bool:
-        return "Promo" in self._raw_payload
+        return self._raw_payload["priceValidUntil"] is not None
 
     @property
     def raw_payload(self) -> str:
@@ -31,12 +33,14 @@ class ProductInfo:
 
 
 class ProductListingEntry:
-    def __init__(self, code: str, name: str, is_in_clearance: bool, url: str, sku: str):
+    def __init__(
+        self, code: str, name: str, is_in_clearance: bool, url: str, skus: list[Sku]
+    ):
         self._code = code
         self._name = name
         self._is_in_clearance = is_in_clearance
         self._url = url
-        self._sku = sku
+        self._skus = skus
 
     def __str__(self) -> str:
         return "[{code}] {name}".format(code=self._code, name=self._name)
@@ -58,8 +62,8 @@ class ProductListingEntry:
         return self._url
 
     @property
-    def sku(self) -> str:
-        return self._sku
+    def skus(self) -> Iterable[Sku]:
+        return self._skus
 
     def __repr__(self):
         props = {
@@ -68,6 +72,20 @@ class ProductListingEntry:
             "is_in_clearance": self._is_in_clearance,
         }
         return str(props)
+
+
+class Sku:
+    def __init__(self, code: str, formatted_code: str):
+        self._code = code
+        self._formatted_code = formatted_code
+
+    @property
+    def code(self) -> str:
+        return self._code
+
+    @property
+    def formatted_code(self) -> str:
+        return self._formatted_code
 
 
 class ProductInfoSample:
