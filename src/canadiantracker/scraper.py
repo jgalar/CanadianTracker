@@ -1,5 +1,6 @@
 import click
 import sys
+import re
 import logging
 import textwrap
 from canadiantracker.cli_utils import (
@@ -57,6 +58,17 @@ def progress_bar_product_name(
     return product_listing_entry.name
 
 
+def validate_category_levels(
+    ctx: click.Context, param: click.Parameter, value: str | None
+) -> str | None:
+    """Validate that the category levels argument is a comman-separated list of
+    integers."""
+    if value is not None and not re.match(r"\d+(,\d+)*", value):
+        raise click.BadParameter("format must be a comma-separated list of integers")
+
+    return value
+
+
 @cli.command(name="scrape-inventory", short_help="fetch static product properties")
 @click.option(
     "--db-path",
@@ -64,6 +76,14 @@ def progress_bar_product_name(
     type=str,
     metavar="PATH",
     help="Path to sqlite db instance",
+)
+@click.option(
+    "--category-levels",
+    type=str,
+    callback=validate_category_levels,
+    default=None,
+    metavar="LEVELS",
+    help="Comma-separated list of category levels to scrape",
 )
 @click.option(
     "--dev-max-categories",
@@ -78,14 +98,21 @@ def progress_bar_product_name(
     metavar="NUM",
 )
 def scrape_inventory(
-    db_path: str, dev_max_categories: int, dev_max_pages_per_category: int
+    db_path: str,
+    category_levels: str,
+    dev_max_categories: int,
+    dev_max_pages_per_category: int,
 ) -> None:
     """
     Fetch static product properties.
     """
 
+    if category_levels is not None:
+        category_levels = [int(x) for x in category_levels.split(",")]
+
     repository = get_product_repository_from_sqlite_file_check_version(db_path)
     inventory = canadiantracker.triangle.ProductInventory(
+        category_levels_to_scrape=category_levels,
         dev_max_categories=dev_max_categories,
         dev_max_pages_per_category=dev_max_pages_per_category,
     )
@@ -136,7 +163,7 @@ def scrape_prices(db_path: str, older_than: int) -> None:
         "label": "Scraping prices",
         "show_pos": True,
         "item_show_func": lambda p: textwrap.shorten(
-            p.name, width=32, placeholder="..."
+            p.code, width=32, placeholder="..."
         )
         if p
         else None,
@@ -148,9 +175,9 @@ def scrape_prices(db_path: str, older_than: int) -> None:
         progress_bar_settings["bar_template"] = ""
 
     with click.progressbar(
-        repository.products, length=repository.products.count(), **progress_bar_settings
-    ) as products:
-        ledger = canadiantracker.triangle.ProductLedger(products)
+        repository.skus, length=repository.skus.count(), **progress_bar_settings
+    ) as skus:
+        ledger = canadiantracker.triangle.ProductLedger(skus)
         repository.add_product_price_samples(ledger)
 
 

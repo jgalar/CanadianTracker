@@ -2,7 +2,6 @@ import click
 import sys
 import logging
 import decimal
-from collections.abc import Iterator
 from canadiantracker.cli_utils import (
     get_product_repository_from_sqlite_file_check_version,
 )
@@ -31,7 +30,7 @@ def cli(debug: bool) -> None:
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
 
 
-@cli.command(name="price-history", short_help="print price history for a product")
+@cli.command(name="price-history", short_help="print price history for a SKU")
 @click.option(
     "--db-path",
     required=True,
@@ -45,52 +44,42 @@ def cli(debug: bool) -> None:
     default="json",
     help="Query output format (default: json)",
 )
-@click.argument("product_code", nargs=1)
-def price_history(db_path: str, format: str, product_code: str) -> None:
+@click.argument("sku_code", nargs=1)
+def price_history(db_path: str, format: str, sku_code: str) -> None:
     """
-    Fetch product properties.
+    Fetch SKU properties.
     """
-
-    # Normalize to upper case as product codes are presented under various
-    # capitalization patterns by the website and APIs.
-    product_code = product_code.upper()
-
     repository = get_product_repository_from_sqlite_file_check_version(db_path)
 
-    if repository.get_product_listing_by_code(product_code) is None:
+    sku = repository.get_sku_by_formatted_code(sku_code)
+    if sku is None:
         click.echo(
             click.style("Error: ", fg="red", bold=True)
-            + "No product with code "
-            + click.style(product_code, fg="white", bold=True)
+            + "No SKU with code "
+            + click.style(sku_code, fg="white", bold=True)
         )
         return sys.exit(1)
 
-    product_info = repository.get_product_listing_by_code(product_code)
-    product_samples = repository.get_product_info_samples_by_code(product_code)
     if format == "json":
-        json_history(product_info, product_samples)
+        json_history(sku)
     elif format == "plot":
-        plot_history(product_info, product_samples)
+        plot_history(sku)
 
 
-def plot_history(
-    product_info: canadiantracker.model.ProductInfo,
-    product_samples: Iterator[canadiantracker.model.ProductInfoSample],
-) -> None:
+def plot_history(sku: canadiantracker.model.Sku) -> None:
     import plotext as plt
 
     plt.datetime.set_datetime_form(date_form="%d/%m/%Y")
 
-    prices = [float(sample.price) for sample in product_samples]
+    prices = [float(sample.price) for sample in sku.samples]
     dates = [
-        plt.datetime.datetime_to_string(sample.sample_time)
-        for sample in product_samples
+        plt.datetime.datetime_to_string(sample.sample_time) for sample in sku.samples
     ]
 
     prices = []
     dates = []
 
-    for index, sample in enumerate(product_samples):
+    for index, sample in enumerate(sku.samples):
         formatted_date = plt.datetime.datetime_to_string(sample.sample_time)
         price = float(
             sample.price.quantize(
@@ -117,16 +106,13 @@ def plot_history(
     plt.axes_color("black")
     plt.plot_date(dates, prices, color="white")
 
-    plt.title("Price history for {}".format(product_info.name))
+    plt.title("Price history for {}".format(sku.product.name))
     plt.xlabel("Date")
     plt.ylabel("Price $")
     plt.show()
 
 
-def json_history(
-    product_info: canadiantracker.model.ProductInfo,
-    product_samples: Iterator[canadiantracker.model.ProductInfoSample],
-) -> None:
+def json_history(sku: canadiantracker.model.Sku) -> None:
     import json
 
     # Since the json package doesn't allow us to dump from a generator and
@@ -134,7 +120,7 @@ def json_history(
     # we generate the array's brackets and commas and serialize the elements
     # one by one.
     print("[", end="")
-    for index, sample in enumerate(product_samples):
+    for index, sample in enumerate(sku.samples):
         if index > 0:
             print(", ", end="")
 
