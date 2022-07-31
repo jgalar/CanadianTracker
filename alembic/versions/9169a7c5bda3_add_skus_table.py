@@ -63,6 +63,7 @@ def upgrade():
 
     # For each product...
     print(">>> Reading product list, generating SKU list")
+    added_sku_codes = set()
     for (
         index,
         name,
@@ -73,8 +74,8 @@ def upgrade():
         sku_codes,
     ) in db.execute(sa.select(products_static_table)):
         if sku_codes is None:
-            # Some entries in the Officiel Database don't contain a SKU, maybe
-            # because they are stale... in any case, we can't do any case with
+            # Some entries in the Official Database don't contain a SKU, maybe
+            # because they are stale... in any case, we can't do anything with
             # those right now.
             continue
 
@@ -83,6 +84,19 @@ def upgrade():
             formatted_sku_code = normalize_formatted_sku_code(formatted_sku_code)
             sku_code = sku_code_from_formatted_sku_code(formatted_sku_code)
 
+            if sku_code in added_sku_codes:
+                db_entry = {
+                    "index": index,
+                    "name": name,
+                    "product_code": product_code,
+                    "is_in_clearance": is_in_clearance,
+                    "last_listed": last_listed,
+                    "url": url,
+                    "sku_codes": sku_codes,
+                }
+                print("Duplicate sku entry, ignoring an entry: " + str(db_entry))
+                continue
+
             sku_values.append(
                 {
                     "code": sku_code,
@@ -90,6 +104,8 @@ def upgrade():
                     "product_index": index,
                 }
             )
+
+            added_sku_codes.add(sku_code)
 
     print(">>> Creating skus table")
     # Now that we know the data looks sane, create the new table.
