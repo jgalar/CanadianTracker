@@ -271,7 +271,7 @@ class _SQLite3ProductRepository(ProductRepository):
                 logger.debug("Updating URL of existing product")
                 entry.url = product_listing_entry.url
 
-        # Get existing SKU codes for that products, to determine which SKUs
+        # Get existing SKU codes for that product, to determine which SKUs
         # are new.
         existing_sku_codes = set()
         for sku in entry.skus:
@@ -292,7 +292,7 @@ class _SQLite3ProductRepository(ProductRepository):
         self, product_infos: Iterator[canadiantracker.model.ProductInfo]
     ) -> None:
         for info in product_infos:
-            # Some responses have null as the current proce.
+            # Some responses have null as the current price.
             price = info.price
             if price is None:
                 continue
