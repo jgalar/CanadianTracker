@@ -283,7 +283,18 @@ class _SQLite3ProductRepository(ProductRepository):
                 continue
 
             logger.debug(f"  SKU {sku.code} not present in storage, adding")
-            _StorageSku(sku.code, sku.formatted_code, entry)
+            stored_sku = self.get_sku_by_code(sku.code)
+            if stored_sku:
+                # A sku with this code already exists, but it is
+                # associated with a different product. These kind of "migrations"
+                # happen periodically when a sku is re-parented to a different
+                # product (typically because it changed names). In this case,
+                # edit the existing entry.
+                logger.debug(f"  SKU {sku.code} is associated to a different product: previous product was '{stored_sku.product.name} ({stored_sku.product.code})', new product is '{entry.name} ({entry.code})'")
+                stored_sku.entry = entry
+            else:
+                # Create a new sku entry.
+                _StorageSku(sku.code, sku.formatted_code, entry)
 
         if add_entry:
             self._session.add(entry)
