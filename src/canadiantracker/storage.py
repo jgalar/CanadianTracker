@@ -172,7 +172,7 @@ class InvalidDatabaseRevisionException(Exception):
 
 
 class _SQLite3ProductRepository(ProductRepository):
-    ALEMBIC_REVISION = "9169a7c5bda3"
+    ALEMBIC_REVISION = "d3f6991d4671"
 
     def __init__(self, path: str):
         db_url = "sqlite:///" + os.path.abspath(path)
