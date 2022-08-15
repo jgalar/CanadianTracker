@@ -293,7 +293,7 @@ class _SQLite3ProductRepository(ProductRepository):
                 logger.debug(
                     f"  SKU {sku.code} is associated to a different product: previous product was '{stored_sku.product.name} ({stored_sku.product.code})', new product is '{entry.name} ({entry.code})'"
                 )
-                stored_sku.entry = entry
+                stored_sku.product = entry
             else:
                 # Create a new sku entry.
                 _StorageSku(sku.code, sku.formatted_code, entry)
