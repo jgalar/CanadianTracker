@@ -264,12 +264,18 @@ class _SQLite3ProductRepository(ProductRepository):
             add_entry = False
 
             # update last listed time
-            setattr(entry, "last_listed", datetime.datetime.now())
+            entry.last_listed = datetime.datetime.now()
 
-            # If the URL is NULL, set it.
-            if entry.url is None:
-                logger.debug("Updating URL of existing product")
+            # Update URL, name and "in clearance" status, these can change over
+            # time.
+            if entry.url != product_listing_entry.url:
                 entry.url = product_listing_entry.url
+
+            if entry.name != product_listing_entry.name:
+                entry.name = product_listing_entry.name
+
+            if entry.is_in_clearance != product_listing_entry.is_in_clearance:
+                entry.is_in_clearance = product_listing_entry.is_in_clearance
 
         # Get existing SKU codes for that product, to determine which SKUs
         # are new.
