@@ -2,7 +2,7 @@
 name = "canadiantracker"
 version = "0.1.0"
 description = ""
-authors = ["Jérémie Galarneau <jeremie.galarneau@efficios.com>"]
+authors = ["Jérémie Galarneau <jeremie.galarneau@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
