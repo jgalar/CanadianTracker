@@ -4,47 +4,7 @@
 <head>
     {% include 'libs.html' %}
 
-    <script>
-        $(document).ready(function () {
-            const code = $('body').attr('data-sku-code');
-            $.get('/api/skus/' + code + '/samples').done(samples => {
-                const xs = [];
-                const ys = [];
-
-                let i = 0;
-                let last_price = 0;
-                for (const sample of samples) {
-                    time = sample.sample_time;
-                    price = sample.product_info.price;
-
-                    /* Insert the last price to render changes as "steps". */
-                    if (i && price != last_price) {
-                        xs.push(time);
-                        ys.push(last_price)
-                    }
-
-                    xs.push(time);
-                    ys.push(price);
-                    last_price = price;
-                    i++;
-                }
-
-                const div = $('#price-history')[0];
-                Plotly.newPlot(div, [{
-                    x: xs,
-                    y: ys,
-                    type: 'scatter',
-                    mode: 'lines+markers',
-                }], {
-                    yaxis: {
-                        rangemode: 'tozero',
-                    },
-                }
-                );
-            });
-
-        });
-    </script>
+    <script src="/static/sku.js"></script>
     <title>CanadianTracker - {{ sku.product.name }}</title>
 </head>
 

@@ -3,6 +3,7 @@ name = "canadiantracker"
 version = "0.1.0"
 description = ""
 authors = ["Jérémie Galarneau <jeremie.galarneau@gmail.com>"]
+include = ["src/canadiantracker/web/dist/*"]
 
 [tool.poetry.dependencies]
 python = "^3.9"

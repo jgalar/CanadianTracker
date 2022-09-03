@@ -3,12 +3,19 @@ import json
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 import canadiantracker.storage
 from canadiantracker.model import ProductInfo, ProductInfoSample, Sku
 
 app = FastAPI()
+app.mount(
+    "/static",
+    StaticFiles(directory=os.path.dirname(__file__) + "/web/dist"),
+    name="static",
+)
+
 _db_path = os.environ["CTSERVER_SERVE_DB_PATH"]
 _templates = Jinja2Templates(directory=os.path.dirname(__file__) + "/web/templates")
 _repository = canadiantracker.storage.get_product_repository_from_sqlite_file(_db_path)
