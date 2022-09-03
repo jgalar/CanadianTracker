@@ -4,26 +4,7 @@
 <head>
     {% include 'libs.html' %}
 
-    <script>
-        $(document).ready(function () {
-            $('#product-table').DataTable({
-                ajax: { url: '/api/products', dataSrc: '' },
-                columns: [
-                    {
-                        data: 'name',
-                        title: 'Name',
-                        render: (data, type, row, meta) => {
-                            return '<a href="/products/' + row.code + '">' + data + '</a>';
-                        }
-                    },
-                    {
-                        data: 'code',
-                        title: 'Code'
-                    }
-                ],
-            });
-        });
-    </script>
+    <script src="/static/index.js"></script>
 </head>
 
 <body>
