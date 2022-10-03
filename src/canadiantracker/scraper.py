@@ -2,6 +2,7 @@ import click
 import sys
 import re
 import logging
+import signal
 import textwrap
 from canadiantracker.cli_utils import (
     get_product_repository_from_sqlite_file_check_version,
@@ -179,6 +180,83 @@ def scrape_prices(db_path: str, older_than: int) -> None:
     ) as skus:
         ledger = canadiantracker.triangle.ProductLedger(skus)
         repository.add_product_price_samples(ledger)
+
+
+@cli.command(name="prune-samples", short_help="prune redundant samples")
+@click.option(
+    "--db-path",
+    required=True,
+    type=str,
+    metavar="PATH",
+    help="Path to sqlite db instance",
+)
+def prune_samples(db_path: str) -> None:
+    repository = get_product_repository_from_sqlite_file_check_version(db_path)
+    n_deleted = 0
+    quit = False
+
+    # Handle ctrl-C gracefully to avoid aborting (and rolling back) the changes
+    # we have so far.
+    def handle_sigint(signo, frame):
+        nonlocal quit
+        quit = True
+
+    signal.signal(signal.SIGINT, handle_sigint)
+
+    def show_item(item):
+        nonlocal n_deleted
+
+        return f"Deleted: {n_deleted}"
+
+    with click.progressbar(
+        repository.samples,
+        repository.samples.count(),
+        show_eta=False,
+        show_pos=True,
+        show_percent=True,
+        item_show_func=show_item,
+        update_min_steps=10000,
+    ) as samples:
+        # We need to flush periodically to avoid Python (SQLAlchemy) memory
+        # usage to grow too much.  Flush at that many deletions.
+        flush_batch_size = 10000
+
+        # The goal is to keep each sample that is the start of a price interval
+        # as well as the very last sample.
+        #
+        # Keep the last sample seen for each SKU index in `lastSamples`.  The
+        # bool indicates if this sample is the start of a price interval.  So
+        # basically, True if we should not delete that sample.  Samples are only
+        # deleted when they are pushed out by a more recent sample, thus we
+        # don't delete the very last sample for each SKU index.
+        last_samples: dict[
+            int, (canadiantracker.model.ProductInfoSample, bool)
+        ] = dict()
+
+        for sample in samples:
+            last_sample_tuple = last_samples.get(sample.sku_index)
+            if last_sample_tuple is None:
+                last_samples[sample.sku_index] = (sample, True)
+            else:
+                last_sample, last_is_interval_start = last_sample_tuple
+
+                assert sample.sample_time > last_sample.sample_time
+
+                if not last_is_interval_start:
+                    repository.delete_sample(last_sample)
+                    n_deleted += 1
+
+                    if n_deleted % flush_batch_size == 0:
+                        repository.flush()
+
+                is_interval_start = last_sample.price != sample.price
+                last_samples[sample.sku_index] = (sample, is_interval_start)
+
+            if quit:
+                repository.flush()
+                raise KeyboardInterrupt
+
+        repository.vacuum()
 
 
 if __name__ == "__main__":

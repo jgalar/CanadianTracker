@@ -134,6 +134,16 @@ class ProductRepository:
     def skus(self) -> Iterator[canadiantracker.model.Sku]:
         raise NotImplementedError
 
+    @property
+    def samples(self) -> Iterator[canadiantracker.model.ProductInfoSample]:
+        raise NotImplementedError
+
+    def flush(self):
+        raise NotImplementedError
+
+    def vacuum(self):
+        raise NotImplementedError
+
     def get_product_listing_by_code(
         self, product_id: str
     ) -> canadiantracker.model.ProductListingEntry:
@@ -160,6 +170,9 @@ class ProductRepository:
     def add_product_price_sample(
         self, product_price_sample: canadiantracker.model.ProductInfoSample
     ) -> None:
+        raise NotImplementedError
+
+    def delete_sample(self, sample: canadiantracker.model.ProductInfoSample) -> None:
         raise NotImplementedError
 
 
@@ -212,6 +225,19 @@ class _SQLite3ProductRepository(ProductRepository):
     @property
     def skus(self) -> Iterator[canadiantracker.model.Sku]:
         return self._session.query(_StorageSku)
+
+    @property
+    def samples(self) -> Iterator[canadiantracker.model.ProductInfoSample]:
+        # Use "yield_per" to prevent SQLAlchemy from instantiting objects for
+        # all samples at once.
+        return self._session.query(_StorageProductSample).yield_per(10000)
+
+
+    def flush(self):
+        self._session.flush()
+
+    def vacuum(self):
+        self._session.execute("VACUUM")
 
     def get_product_listing_by_code(
         self, product_id: str
@@ -326,6 +352,9 @@ class _SQLite3ProductRepository(ProductRepository):
                 sku=sku,
             )
             self._session.add(new_sample)
+
+    def delete_sample(self, sample: canadiantracker.model.ProductInfoSample) -> None:
+        self._session.delete(sample)
 
 
 def get_product_repository_from_sqlite_file(path: str) -> ProductRepository:
