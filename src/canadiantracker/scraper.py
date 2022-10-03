@@ -154,7 +154,12 @@ def scrape_inventory(
     show_default=True,
     help="Only scrape prices for products that were not updated in the last N days (ignored for the moment)",
 )
-def scrape_prices(db_path: str, older_than: int) -> None:
+@click.option(
+    "--discard-equal",
+    help="Discard the previous last samples when equal to new samples",
+    is_flag=True,
+)
+def scrape_prices(db_path: str, older_than: int, discard_equal: bool) -> None:
     """
     Fetch current product prices.
     """
@@ -179,7 +184,7 @@ def scrape_prices(db_path: str, older_than: int) -> None:
         repository.skus, length=repository.skus.count(), **progress_bar_settings
     ) as skus:
         ledger = canadiantracker.triangle.ProductLedger(skus)
-        repository.add_product_price_samples(ledger)
+        repository.add_product_price_samples(ledger, discard_equal)
 
 
 @cli.command(name="prune-samples", short_help="prune redundant samples")

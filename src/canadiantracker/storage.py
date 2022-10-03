@@ -76,6 +76,19 @@ class _StorageSku(sqlalchemy_base):
         self.formatted_code = formatted_code
         self.product = product
 
+    def __repr__(self):
+        return (
+            "_StorageSku("
+            + ", ".join(
+                [
+                    f"code={self.code}",
+                    f"formatted_code={self.formatted_code}",
+                    f"product_index={self.product_index}",
+                ]
+            )
+            + ")"
+        )
+
 
 _StorageProductListingEntry.skus = sqlalchemy.orm.relationship(
     "_StorageSku", back_populates="product"
@@ -114,6 +127,20 @@ class _StorageProductSample(sqlalchemy_base):
         self.raw_payload = str(raw_payload)
         self.sample_time = datetime.datetime.now()
         self.sku = sku
+
+    def __repr__(self):
+        return (
+            "_StorageProductSample("
+            + ", ".join(
+                [
+                    f"index={self.index}",
+                    f"sample_time={self.sample_time}",
+                    f"sku_index={self.sku_index}",
+                    f"price={self.price}",
+                ]
+            )
+            + ")"
+        )
 
 
 _StorageSku.samples = sqlalchemy.orm.relationship(
@@ -232,7 +259,6 @@ class _SQLite3ProductRepository(ProductRepository):
         # all samples at once.
         return self._session.query(_StorageProductSample).yield_per(10000)
 
-
     def flush(self):
         self._session.flush()
 
@@ -334,7 +360,9 @@ class _SQLite3ProductRepository(ProductRepository):
             self._session.add(entry)
 
     def add_product_price_samples(
-        self, product_infos: Iterator[canadiantracker.model.ProductInfo]
+        self,
+        product_infos: Iterator[canadiantracker.model.ProductInfo],
+        discard_equal: bool,
     ) -> None:
         for info in product_infos:
             # Some responses have null as the current price.
@@ -344,6 +372,28 @@ class _SQLite3ProductRepository(ProductRepository):
 
             sku = self.get_sku_by_code(info.code)
             assert sku
+
+            logger.debug(f"adding sample for {sku}")
+
+            if discard_equal:
+                last_sample = (
+                    self._session.query(_StorageProductSample)
+                    .filter(_StorageProductSample.sku_index == sku.index)
+                    .order_by(_StorageProductSample.sample_time.desc())
+                    .limit(1)
+                    .one_or_none()
+                )
+
+                if last_sample:
+                    equal = int(price * 100) == int(last_sample.price * 100)
+                    logger.debug(
+                        f"last price={repr(last_sample.price)}, new price={repr(price)}, equal={equal}"
+                    )
+
+                    if equal:
+                        self._session.delete(last_sample)
+                else:
+                    logger.debug("no previous sample found")
 
             new_sample = _StorageProductSample(
                 price=price,
