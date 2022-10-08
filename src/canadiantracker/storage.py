@@ -1,4 +1,5 @@
 from __future__ import annotations
+import decimal
 import sqlalchemy
 import sqlalchemy.orm
 import canadiantracker.model
@@ -109,24 +110,28 @@ class _StorageProductSample(sqlalchemy_base):
         nullable=False,
         index=True,
     )
-    price = sqlalchemy.Column(sqlalchemy.Numeric, nullable=False)
     in_promo = sqlalchemy.Column(sqlalchemy.Boolean, nullable=False)
     raw_payload = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+    price_cents = sqlalchemy.Column(sqlalchemy.Numeric, nullable=False)
 
     sku = sqlalchemy.orm.relationship("_StorageSku", back_populates="samples")
 
     def __init__(
         self,
-        price: float,
+        price: decimal.Decimal,
         in_promo: bool,
         raw_payload: dict,
         sku: _StorageSku,
     ):
-        self.price = price
+        self.price_cents = int(price * 100)
         self.in_promo = in_promo
         self.raw_payload = str(raw_payload)
         self.sample_time = datetime.datetime.now()
         self.sku = sku
+
+    @property
+    def price(self) -> decimal.Decimal:
+        return decimal.Decimal(self.price_cents) / 100
 
     def __repr__(self):
         return (
@@ -136,7 +141,7 @@ class _StorageProductSample(sqlalchemy_base):
                     f"index={self.index}",
                     f"sample_time={self.sample_time}",
                     f"sku_index={self.sku_index}",
-                    f"price={self.price}",
+                    f"price_cents={self.price_cents}",
                 ]
             )
             + ")"
@@ -212,7 +217,7 @@ class InvalidDatabaseRevisionException(Exception):
 
 
 class _SQLite3ProductRepository(ProductRepository):
-    ALEMBIC_REVISION = "d3f6991d4671"
+    ALEMBIC_REVISION = "ac8256c291d4"
 
     def __init__(self, path: str):
         db_url = "sqlite:///" + os.path.abspath(path)
@@ -385,9 +390,9 @@ class _SQLite3ProductRepository(ProductRepository):
                 )
 
                 if last_sample:
-                    equal = int(price * 100) == int(last_sample.price * 100)
+                    equal = price == last_sample.price
                     logger.debug(
-                        f"last price={repr(last_sample.price)}, new price={repr(price)}, equal={equal}"
+                        f"last price={last_sample.price}, new price={price}, equal={equal}"
                     )
 
                     if equal:

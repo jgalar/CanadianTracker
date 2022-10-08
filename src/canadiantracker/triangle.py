@@ -1,5 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
+import decimal
 from typing import Callable, Generator, Tuple
 import requests
 import logging
@@ -285,7 +286,7 @@ class ProductLedger(Iterable):
             with open("/tmp/res", "w") as f:
                 f.write(response.text)
 
-            response = response.json()
+            response = response.json(parse_float=decimal.Decimal)
             response_skus = response["skus"]
             logger.debug("received {} product infos".format(len(response_skus)))
 
