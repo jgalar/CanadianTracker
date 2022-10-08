@@ -1,5 +1,6 @@
 from __future__ import annotations
 import datetime
+import decimal
 from typing import Iterable
 
 
@@ -9,12 +10,14 @@ class ProductInfo:
         self._raw_payload = result
 
     @property
-    def price(self) -> float | None:
+    def price(self) -> decimal.Decimal | None:
         current_price = self._raw_payload["currentPrice"]
         if current_price is None:
             return None
 
-        return float(current_price["value"])
+        value = current_price["value"]
+        assert type(value) is decimal.Decimal
+        return value
 
     @property
     def code(self) -> str:
