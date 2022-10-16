@@ -263,6 +263,14 @@ class _SQLite3ProductRepository(ProductRepository):
         self._session.flush()
 
     def vacuum(self):
+        # Vacuum can't be run during a transaction; complete the current
+        # transaction before vacuuming.
+        #
+        # FIXME This may be a bit surprising, should the API ask that users
+        # commit explicitly (adding a new method) to make sure they are aware
+        # of the risks? 😏
+        if self._session.in_transaction():
+            self._session.commit()
         self._session.execute("VACUUM")
 
     def get_product_listing_by_code(
