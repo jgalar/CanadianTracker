@@ -74,7 +74,7 @@ def validate_category_levels(
 @click.option(
     "--db-path",
     required=True,
-    type=str,
+    type=click.Path(),
     metavar="PATH",
     help="Path to sqlite db instance",
 )
@@ -88,6 +88,7 @@ def validate_category_levels(
 )
 @click.option(
     "--dev-max-categories",
+    type=int,
     default=0,
     help="Maximum number of categories to fetch (developer option)",
     metavar="NUM",
@@ -95,6 +96,7 @@ def validate_category_levels(
 @click.option(
     "--dev-max-pages-per-category",
     default=0,
+    type=int,
     help="Maximum number of pages to fetch per category (developer option)",
     metavar="NUM",
 )
@@ -142,7 +144,7 @@ def scrape_inventory(
 @click.option(
     "--db-path",
     required=True,
-    type=str,
+    type=click.Path(),
     metavar="PATH",
     help="Path to sqlite db instance",
 )
@@ -193,7 +195,7 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool) -> None:
 @click.option(
     "--db-path",
     required=True,
-    type=str,
+    type=click.Path(),
     metavar="PATH",
     help="Path to sqlite db instance",
 )
