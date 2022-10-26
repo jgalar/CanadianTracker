@@ -16,8 +16,8 @@ class ProductInfo:
             return None
 
         value = current_price["value"]
-        assert type(value) is decimal.Decimal
-        return value
+        assert type(value) in [decimal.Decimal, int]
+        return decimal.Decimal(value)
 
     @property
     def code(self) -> str:
