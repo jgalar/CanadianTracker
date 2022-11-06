@@ -70,7 +70,7 @@ def validate_category_levels(
     return value
 
 
-@cli.command(name="scrape-inventory", short_help="fetch static product properties")
+@cli.command(name="scrape-products", short_help="fetch static product properties")
 @click.option(
     "--db-path",
     required=True,
@@ -100,7 +100,7 @@ def validate_category_levels(
     help="Maximum number of pages to fetch per category (developer option)",
     metavar="NUM",
 )
-def scrape_inventory(
+def scrape_products(
     db_path: str,
     category_levels: str,
     dev_max_categories: int,
@@ -138,6 +138,58 @@ def scrape_inventory(
     with click.progressbar(inventory, **progress_bar_settings) as bar_wrapper:
         for product_listing in bar_wrapper:
             repository.add_product_listing_entry(product_listing)
+
+
+@cli.command(name="scrape-skus", short_help="fetch static product properties")
+@click.option(
+    "--db-path",
+    required=True,
+    type=click.Path(),
+    metavar="PATH",
+    help="Path to sqlite db instance",
+)
+@click.option(
+    "--products",
+    type=str,
+    default=None,
+    metavar="PRODUCTS",
+    help="Comma-separated list of product codes to scrape SKUs for",
+)
+def scrape_skus(db_path: str, products: str | None):
+    repository = get_product_repository_from_sqlite_file_check_version(db_path)
+
+    if products is not None:
+        products = products.split(",")
+
+    progress_bar_settings = {
+        "label": "Scraping SKUs",
+        "show_pos": True,
+        "item_show_func": lambda p: textwrap.shorten(
+            p.code, width=32, placeholder="..."
+        )
+        if p
+        else None,
+        "length": repository.products().count(),
+    }
+
+    count = repository.products().count()
+
+    if logging.root.level == logging.DEBUG:
+        # Deactivate progress bar in debug mode since its updates make the
+        # output very spammy
+        progress_bar_settings["bar_template"] = ""
+
+    with click.progressbar(
+        repository.products(codes=products), **progress_bar_settings
+    ) as products_wrapper:
+        for i, product in enumerate(products_wrapper):
+            try:
+                for sku in canadiantracker.triangle.SkusInventory(product):
+                    repository.add_sku(product, sku)
+            except canadiantracker.triangle.NoSuchProductException:
+                logger.debug(f"Product {product} no longer exists")
+            except canadiantracker.triangle.UnknownProductErrorException:
+                logger.debug(f"Unknown error while getting product {product}")
 
 
 @cli.command(name="scrape-prices", short_help="fetch current product prices")

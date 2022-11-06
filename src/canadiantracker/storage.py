@@ -201,6 +201,13 @@ class ProductRepository:
     ) -> None:
         raise NotImplementedError
 
+    def add_sku(
+        self,
+        product: canadiantracker.model.ProductListingEntry,
+        sku: canadiantracker.model.Sku,
+    ):
+        raise NotImplementedError
+
     def add_product_price_sample(
         self, product_price_sample: canadiantracker.model.ProductInfoSample
     ) -> None:
@@ -326,16 +333,15 @@ class _SQLite3ProductRepository(ProductRepository):
         logger.debug("Product %s present in storage", "is" if entry else "is not")
 
         if not entry:
-            entry = _StorageProductListingEntry(
-                product_listing_entry.name,
-                product_listing_entry.code.upper(),
-                product_listing_entry.is_in_clearance,
-                product_listing_entry.url,
+            self._session.add(
+                _StorageProductListingEntry(
+                    product_listing_entry.name,
+                    product_listing_entry.code.upper(),
+                    product_listing_entry.is_in_clearance,
+                    product_listing_entry.url,
+                )
             )
-            add_entry = True
         else:
-            add_entry = False
-
             # update last listed time
             entry.last_listed = datetime.datetime.now()
 
@@ -350,35 +356,33 @@ class _SQLite3ProductRepository(ProductRepository):
             if entry.is_in_clearance != product_listing_entry.is_in_clearance:
                 entry.is_in_clearance = product_listing_entry.is_in_clearance
 
-        # Get existing SKU codes for that product, to determine which SKUs
-        # are new.
-        existing_sku_codes = set()
-        for sku in entry.skus:
-            existing_sku_codes.add(sku.code)
+    def add_sku(
+        self,
+        product: canadiantracker.model.ProductListingEntry,
+        sku: canadiantracker.model.Sku,
+    ):
+        sku_entry: _StorageSku | None = (
+            self._session.query(_StorageSku).filter_by(code=sku.code).first()
+        )
 
-        for sku in product_listing_entry.skus:
-            if sku.code in existing_sku_codes:
-                logger.debug(f"  SKU {sku.code} already present in storage")
-                continue
-
+        if sku_entry is None:
             logger.debug(f"  SKU {sku.code} not present in storage, adding")
-            stored_sku = self.get_sku_by_code(sku.code)
-            if stored_sku:
+            # Create a new sku entry.
+            product_entry = self.get_product_listing_by_code(product.code)
+            assert product_entry is not None
+            self._session.add(_StorageSku(sku.code, sku.formatted_code, product_entry))
+        else:
+            logger.debug(f"  SKU {sku.code} is already present")
+            if sku_entry.product.code != product.code:
                 # A sku with this code already exists, but it is
                 # associated with a different product. These kind of "migrations"
                 # happen periodically when a sku is re-parented to a different
                 # product (typically because it changed names). In this case,
                 # edit the existing entry.
                 logger.debug(
-                    f"  SKU {sku.code} is associated to a different product: previous product was '{stored_sku.product.name} ({stored_sku.product.code})', new product is '{entry.name} ({entry.code})'"
+                    f"  SKU {sku.code} is associated to a different product: previous product was '{sku_entry.product.name} ({sku_entry.product.code})', new product is '{product.name} ({product.code})'"
                 )
-                stored_sku.product = entry
-            else:
-                # Create a new sku entry.
-                _StorageSku(sku.code, sku.formatted_code, entry)
-
-        if add_entry:
-            self._session.add(entry)
+                sku_entry.product = product
 
     def add_product_price_samples(
         self,
