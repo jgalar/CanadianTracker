@@ -1,5 +1,6 @@
 from __future__ import annotations
 import decimal
+from typing import Iterable
 import sqlalchemy
 import sqlalchemy.orm
 import canadiantracker.model
@@ -158,8 +159,9 @@ class ProductRepository:
         # Use a factory method to get an instance.
         raise NotImplementedError
 
-    @property
-    def products(self) -> Iterator[canadiantracker.model.ProductListingEntry]:
+    def products(
+        self, codes: Iterable[str] | None = None
+    ) -> Iterator[canadiantracker.model.ProductListingEntry]:
         raise NotImplementedError
 
     @property
@@ -250,9 +252,15 @@ class _SQLite3ProductRepository(ProductRepository):
         if hasattr(self, "_session"):
             self._session.commit()
 
-    @property
-    def products(self) -> Iterator[canadiantracker.model.ProductListingEntry]:
-        return self._session.query(_StorageProductListingEntry)
+    def products(
+        self, codes: Iterable[str] | None = None
+    ) -> Iterator[canadiantracker.model.ProductListingEntry]:
+        q = self._session.query(_StorageProductListingEntry)
+
+        if codes is not None:
+            q = q.filter(_StorageProductListingEntry.code.in_(codes))
+
+        return q
 
     @property
     def skus(self) -> Iterator[canadiantracker.model.Sku]:
@@ -281,7 +289,7 @@ class _SQLite3ProductRepository(ProductRepository):
     def get_product_listing_by_code(
         self, product_id: str
     ) -> canadiantracker.model.ProductListingEntry:
-        result = self.products.filter(_StorageProductListingEntry.code == product_id)
+        result = self.products().filter(_StorageProductListingEntry.code == product_id)
         return result.first() if result else None
 
     def get_sku_by_code(self, code: str) -> _StorageSku:
