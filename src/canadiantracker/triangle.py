@@ -99,6 +99,11 @@ _base_headers = {
 }
 
 
+@staticmethod
+def _random_user_agent() -> str:
+    return latest_user_agents.get_random_user_agent()
+
+
 class ProductInventory(Iterable):
     def __init__(
         self,
@@ -203,17 +208,11 @@ class ProductInventory(Iterable):
                 for product in response["products"]:
                     assert product["type"] == "PRODUCT"
 
-                    skus = []
-                    for sku in product["skus"]:
-                        code = sku["code"]
-                        formatted_code = sku["formattedCode"]
-                        skus.append(Sku(code, formatted_code))
-
                     code = product["code"]
                     url = product["url"]
                     name = product["title"]
                     is_in_clearance = "CLEARANCE" in product["badges"]
-                    yield ProductListingEntry(code, name, is_in_clearance, url, skus)
+                    yield ProductListingEntry(code, name, is_in_clearance, url)
 
                 if (
                     self._dev_max_pages_per_category != 0
@@ -228,6 +227,52 @@ class ProductInventory(Iterable):
                 and self._dev_max_categories == num_categories_scraped
             ):
                 break
+
+
+class NoSuchProductException(RuntimeError):
+    pass
+
+
+class UnknownProductErrorException(RuntimeError):
+    pass
+
+
+class SkusInventory(Iterable):
+    def __init__(self, product: ProductListingEntry):
+        self._product = product
+
+    @staticmethod
+    def _request_page(product_code) -> requests.Response:
+        """Fetch one product page."""
+        headers = _base_headers.copy()
+        headers["user-agent"] = _random_user_agent()
+        return requests.get(
+            f"https://apim.canadiantire.ca/v1/product/api/v1/product/productFamily/{product_code}?baseStoreId=CTR&lang=en_CA&storeId=64",
+            headers=headers,
+        )
+
+    def __iter__(self):
+        for ntry in range(5):
+            resp = SkusInventory._request_page(self._product.code)
+            if resp.status_code == 404:
+                raise NoSuchProductException
+            if resp.status_code not in (200, 206):
+                logger.error(f"Got status code {resp.status_code} on try {ntry}")
+                time.sleep(5)
+                continue
+
+            resp = resp.json()
+            # Some stale products didn't have a skus list in the response.  The
+            # CT website was broken for those, so we just ignore them.
+            if "skus" not in resp or resp["skus"] is None:
+                return
+
+            for sku in resp["skus"]:
+                yield Sku(sku["code"], sku["formattedCode"])
+
+            return
+
+        raise UnknownProductErrorException
 
 
 class ProductLedger(Iterable):
@@ -251,17 +296,13 @@ class ProductLedger(Iterable):
             yield batch
 
     @staticmethod
-    def _user_agent() -> str:
-        return latest_user_agents.get_random_user_agent()
-
-    @staticmethod
     def _get_product_infos(
         skus: Sequence[Sku],
     ) -> Sequence[ProductInfo]:
         for ntry in range(5):
             url = "https://apim.canadiantire.ca/v1/product/api/v1/product/sku/PriceAvailability/?lang=en_CA&storeId=64"
             headers = _base_headers.copy()
-            headers["user-agent"] = ProductLedger._user_agent()
+            headers["user-agent"] = _random_user_agent()
             headers["content-type"] = "application/json"
 
             body = {
