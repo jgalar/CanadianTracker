@@ -34,7 +34,7 @@ async def api_products() -> Response:
     if cached_products_response is None:
         products = []
 
-        for p in _repository.products:
+        for p in _repository.products():
             products.append(
                 {
                     "name": p.name,
