@@ -18,7 +18,7 @@ python-dotenv = "^0.19.2"
 Jinja2 = "^3.1.2"
 traceback-with-variables = "^2.0.4"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
 alembic = "^1.7.7"
 black = {version = "^22.3.0", allow-prereleases = true}
