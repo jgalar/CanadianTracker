@@ -15,7 +15,7 @@ from canadiantracker import model, storage
 # Create a database in a temporary directory and initialize it with the
 # expected schema.  Return a repository object using that database.
 @pytest.fixture
-def repository(tmp_path: str) -> storage._SQLite3ProductRepository:
+def repository(tmp_path: str) -> storage.ProductRepository:
     sqlite_db_path = os.path.join(tmp_path, "inventory.db")
     engine = sqlalchemy.create_engine(f"sqlite:///{sqlite_db_path}")
     conn = engine.connect()
@@ -33,7 +33,7 @@ def repository(tmp_path: str) -> storage._SQLite3ProductRepository:
             list(
                 mc.script.iterate_revisions(
                     lower="base",
-                    upper=storage._SQLite3ProductRepository.ALEMBIC_REVISION,
+                    upper=storage.ProductRepository.ALEMBIC_REVISION,
                 )
             )
         )
@@ -49,15 +49,15 @@ def repository(tmp_path: str) -> storage._SQLite3ProductRepository:
         config,
         script,
         fn=do_upgrade,
-        destination_rev=storage._SQLite3ProductRepository.ALEMBIC_REVISION,
+        destination_rev=storage.ProductRepository.ALEMBIC_REVISION,
     ) as ec:
         ec.configure(connection=conn)
         ec.run_migrations()
 
-    return storage._SQLite3ProductRepository(sqlite_db_path)
+    return storage.ProductRepository(sqlite_db_path)
 
 
-def test_add_product(repository: storage._SQLite3ProductRepository):
+def test_add_product(repository: storage.ProductRepository):
     repository.add_product_listing_entry(
         model.ProductListingEntry("1234567", "Hello", False, "/foo")
     )
