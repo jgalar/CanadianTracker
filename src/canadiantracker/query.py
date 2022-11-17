@@ -2,12 +2,8 @@ import click
 import sys
 import logging
 import decimal
-from canadiantracker.cli_utils import (
-    get_product_repository_from_sqlite_file_check_version,
-)
-
-import canadiantracker.storage
-import canadiantracker.model
+from canadiantracker import cli_utils
+from canadiantracker import model
 
 
 logger = logging.getLogger(__name__)
@@ -49,7 +45,9 @@ def price_history(db_path: str, format: str, sku_code: str) -> None:
     """
     Fetch SKU properties.
     """
-    repository = get_product_repository_from_sqlite_file_check_version(db_path)
+    repository = cli_utils.get_product_repository_from_sqlite_file_check_version(
+        db_path
+    )
 
     sku = repository.get_sku_by_formatted_code(sku_code)
     if sku is None:
@@ -66,7 +64,7 @@ def price_history(db_path: str, format: str, sku_code: str) -> None:
         plot_history(sku)
 
 
-def plot_history(sku: canadiantracker.model.Sku) -> None:
+def plot_history(sku: model.Sku) -> None:
     import plotext as plt
 
     plt.datetime.set_datetime_form(date_form="%d/%m/%Y")
@@ -112,7 +110,7 @@ def plot_history(sku: canadiantracker.model.Sku) -> None:
     plt.show()
 
 
-def json_history(sku: canadiantracker.model.Sku) -> None:
+def json_history(sku: model.Sku) -> None:
     import json
 
     # Since the json package doesn't allow us to dump from a generator and

@@ -6,8 +6,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-import canadiantracker.storage
-from canadiantracker.model import ProductInfo, ProductInfoSample, Sku
+from canadiantracker import storage, model
 
 app = FastAPI()
 app.mount(
@@ -18,7 +17,7 @@ app.mount(
 
 _db_path = os.environ["CTSERVER_SERVE_DB_PATH"]
 _templates = Jinja2Templates(directory=os.path.dirname(__file__) + "/web/templates")
-_repository = canadiantracker.storage.get_product_repository_from_sqlite_file(_db_path)
+_repository = storage.get_product_repository_from_sqlite_file(_db_path)
 
 
 # This request takes a few seconds to execute, causing some delay when
@@ -49,21 +48,21 @@ async def api_products() -> Response:
     return cached_products_response
 
 
-def serialize_product_info(info: ProductInfo) -> dict:
+def serialize_product_info(info: model.ProductInfo) -> dict:
     return {
         "price": info.price,
         "in_promo": info.in_promo,
     }
 
 
-def serialize_product_info_sample(sample: ProductInfoSample) -> dict:
+def serialize_product_info_sample(sample: model.ProductInfoSample) -> dict:
     return {
         "sample_time": sample.sample_time,
         "product_info": serialize_product_info(sample),
     }
 
 
-def serialize_sku(sku: Sku) -> dict:
+def serialize_sku(sku: model.Sku) -> dict:
     return {"code": sku.code, "formatted_code": sku.formatted_code}
 
 
