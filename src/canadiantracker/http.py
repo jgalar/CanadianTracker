@@ -95,7 +95,7 @@ async def one_product(
     )
 
 
-def make_sku_url(sku_code: str, product_url: str) -> str:
+def make_sku_url(sku_code: str, product_url: str) -> str | None:
     """Derive the url for sku SKU_CODE, given that the url for the product
     is PRODUCT_URL."""
     if not product_url.endswith("p.html"):
