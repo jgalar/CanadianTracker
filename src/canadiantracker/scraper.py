@@ -4,13 +4,8 @@ import re
 import logging
 import signal
 import textwrap
-from canadiantracker.cli_utils import (
-    get_product_repository_from_sqlite_file_check_version,
-)
-
-import canadiantracker.triangle
-import canadiantracker.storage
-import canadiantracker.model
+from canadiantracker import cli_utils
+from canadiantracker import triangle, model
 
 
 logger = logging.getLogger(__name__)
@@ -54,7 +49,7 @@ def cli(debug: bool) -> None:
 
 
 def progress_bar_product_name(
-    product_listing_entry: canadiantracker.model.ProductListingEntry,
+    product_listing_entry: model.ProductListingEntry,
 ) -> str:
     return product_listing_entry.name
 
@@ -113,8 +108,10 @@ def scrape_inventory(
     if category_levels is not None:
         category_levels = [int(x) for x in category_levels.split(",")]
 
-    repository = get_product_repository_from_sqlite_file_check_version(db_path)
-    inventory = canadiantracker.triangle.ProductInventory(
+    repository = cli_utils.get_product_repository_from_sqlite_file_check_version(
+        db_path
+    )
+    inventory = triangle.ProductInventory(
         category_levels_to_scrape=category_levels,
         dev_max_categories=dev_max_categories,
         dev_max_pages_per_category=dev_max_pages_per_category,
@@ -167,7 +164,9 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool) -> None:
     """
     Fetch current product prices.
     """
-    repository = get_product_repository_from_sqlite_file_check_version(db_path)
+    repository = cli_utils.get_product_repository_from_sqlite_file_check_version(
+        db_path
+    )
 
     progress_bar_settings = {
         "label": "Scraping prices",
@@ -187,7 +186,7 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool) -> None:
     with click.progressbar(
         repository.skus, length=repository.skus.count(), **progress_bar_settings
     ) as skus:
-        ledger = canadiantracker.triangle.ProductLedger(skus)
+        ledger = triangle.ProductLedger(skus)
         repository.add_product_price_samples(ledger, discard_equal)
 
 
@@ -200,7 +199,9 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool) -> None:
     help="Path to sqlite db instance",
 )
 def prune_samples(db_path: str) -> None:
-    repository = get_product_repository_from_sqlite_file_check_version(db_path)
+    repository = cli_utils.get_product_repository_from_sqlite_file_check_version(
+        db_path
+    )
     n_deleted = 0
     quit = False
 
@@ -238,9 +239,7 @@ def prune_samples(db_path: str) -> None:
         # basically, True if we should not delete that sample.  Samples are only
         # deleted when they are pushed out by a more recent sample, thus we
         # don't delete the very last sample for each SKU index.
-        last_samples: dict[
-            int, (canadiantracker.model.ProductInfoSample, bool)
-        ] = dict()
+        last_samples: dict[int, (model.ProductInfoSample, bool)] = dict()
 
         for sample in samples:
             last_sample_tuple = last_samples.get(sample.sku_index)

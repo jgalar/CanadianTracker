@@ -2,7 +2,7 @@ from __future__ import annotations
 import decimal
 import sqlalchemy
 import sqlalchemy.orm
-import canadiantracker.model
+from canadiantracker import model
 import os
 import datetime
 from collections.abc import Iterator
@@ -159,15 +159,15 @@ class ProductRepository:
         raise NotImplementedError
 
     @property
-    def products(self) -> Iterator[canadiantracker.model.ProductListingEntry]:
+    def products(self) -> Iterator[model.ProductListingEntry]:
         raise NotImplementedError
 
     @property
-    def skus(self) -> Iterator[canadiantracker.model.Sku]:
+    def skus(self) -> Iterator[model.Sku]:
         raise NotImplementedError
 
     @property
-    def samples(self) -> Iterator[canadiantracker.model.ProductInfoSample]:
+    def samples(self) -> Iterator[model.ProductInfoSample]:
         raise NotImplementedError
 
     def flush(self):
@@ -176,35 +176,31 @@ class ProductRepository:
     def vacuum(self):
         raise NotImplementedError
 
-    def get_product_listing_by_code(
-        self, product_id: str
-    ) -> canadiantracker.model.ProductListingEntry:
+    def get_product_listing_by_code(self, product_id: str) -> model.ProductListingEntry:
         raise NotImplementedError
 
-    def get_sku_by_code(self, sku_code: str) -> canadiantracker.model.Sku:
+    def get_sku_by_code(self, sku_code: str) -> model.Sku:
         raise NotImplementedError
 
-    def get_sku_by_formatted_code(
-        self, sku_formatted_code: str
-    ) -> canadiantracker.model.Sku:
+    def get_sku_by_formatted_code(self, sku_formatted_code: str) -> model.Sku:
         raise NotImplementedError
 
     def get_product_info_samples_by_code(
         self, product_id: str
-    ) -> Iterator[canadiantracker.model.ProductInfoSample]:
+    ) -> Iterator[model.ProductInfoSample]:
         raise NotImplementedError
 
     def add_product_listing_entry(
-        self, product_listing_entry: canadiantracker.model.ProductListingEntry
+        self, product_listing_entry: model.ProductListingEntry
     ) -> None:
         raise NotImplementedError
 
     def add_product_price_sample(
-        self, product_price_sample: canadiantracker.model.ProductInfoSample
+        self, product_price_sample: model.ProductInfoSample
     ) -> None:
         raise NotImplementedError
 
-    def delete_sample(self, sample: canadiantracker.model.ProductInfoSample) -> None:
+    def delete_sample(self, sample: model.ProductInfoSample) -> None:
         raise NotImplementedError
 
 
@@ -251,15 +247,15 @@ class _SQLite3ProductRepository(ProductRepository):
             self._session.commit()
 
     @property
-    def products(self) -> Iterator[canadiantracker.model.ProductListingEntry]:
+    def products(self) -> Iterator[model.ProductListingEntry]:
         return self._session.query(_StorageProductListingEntry)
 
     @property
-    def skus(self) -> Iterator[canadiantracker.model.Sku]:
+    def skus(self) -> Iterator[model.Sku]:
         return self._session.query(_StorageSku)
 
     @property
-    def samples(self) -> Iterator[canadiantracker.model.ProductInfoSample]:
+    def samples(self) -> Iterator[model.ProductInfoSample]:
         # Use "yield_per" to prevent SQLAlchemy from instantiting objects for
         # all samples at once.
         return self._session.query(_StorageProductSample).yield_per(10000)
@@ -278,9 +274,7 @@ class _SQLite3ProductRepository(ProductRepository):
             self._session.commit()
         self._session.execute("VACUUM")
 
-    def get_product_listing_by_code(
-        self, product_id: str
-    ) -> canadiantracker.model.ProductListingEntry:
+    def get_product_listing_by_code(self, product_id: str) -> model.ProductListingEntry:
         result = self.products.filter(_StorageProductListingEntry.code == product_id)
         return result.first() if result else None
 
@@ -288,15 +282,13 @@ class _SQLite3ProductRepository(ProductRepository):
         result = self.skus.filter(_StorageSku.code == code)
         return result.first() if result else None
 
-    def get_sku_by_formatted_code(
-        self, sku_formatted_code: str
-    ) -> canadiantracker.model.Sku:
+    def get_sku_by_formatted_code(self, sku_formatted_code: str) -> model.Sku:
         result = self.skus.filter(_StorageSku.formatted_code == sku_formatted_code)
         return result.first() if result else None
 
     def get_product_info_samples_by_code(
         self, product_id: str
-    ) -> Iterator[canadiantracker.model.ProductInfoSample]:
+    ) -> Iterator[model.ProductInfoSample]:
         result = (
             self._session.query(_StorageProductSample)
             .filter(_StorageProductSample.code == product_id)
@@ -305,7 +297,7 @@ class _SQLite3ProductRepository(ProductRepository):
         return result.all() if result else None
 
     def add_product_listing_entry(
-        self, product_listing_entry: canadiantracker.model.ProductListingEntry
+        self, product_listing_entry: model.ProductListingEntry
     ) -> None:
         logger.debug(
             "Attempting to add product: code = `%s`", product_listing_entry.code
@@ -374,7 +366,7 @@ class _SQLite3ProductRepository(ProductRepository):
 
     def add_product_price_samples(
         self,
-        product_infos: Iterator[canadiantracker.model.ProductInfo],
+        product_infos: Iterator[model.ProductInfo],
         discard_equal: bool,
     ) -> None:
         for info in product_infos:
@@ -416,7 +408,7 @@ class _SQLite3ProductRepository(ProductRepository):
             )
             self._session.add(new_sample)
 
-    def delete_sample(self, sample: canadiantracker.model.ProductInfoSample) -> None:
+    def delete_sample(self, sample: model.ProductInfoSample) -> None:
         self._session.delete(sample)
 
 

@@ -7,8 +7,7 @@ import logging
 import fake_useragent
 import time
 from collections.abc import Sequence, Iterable, Iterator
-
-from canadiantracker.model import ProductListingEntry, ProductInfo, Sku
+from canadiantracker import model
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +176,7 @@ class ProductInventory(Iterable):
             headers=_base_headers,
         )
 
-    def __iter__(self) -> Iterator[ProductListingEntry]:
+    def __iter__(self) -> Iterator[model.ProductListingEntry]:
         num_categories_scraped = 0
 
         for cat, level in self._categories.iter_preorder():
@@ -207,13 +206,15 @@ class ProductInventory(Iterable):
                     for sku in product["skus"]:
                         code = sku["code"]
                         formatted_code = sku["formattedCode"]
-                        skus.append(Sku(code, formatted_code))
+                        skus.append(model.Sku(code, formatted_code))
 
                     code = product["code"]
                     url = product["url"]
                     name = product["title"]
                     is_in_clearance = "CLEARANCE" in product["badges"]
-                    yield ProductListingEntry(code, name, is_in_clearance, url, skus)
+                    yield model.ProductListingEntry(
+                        code, name, is_in_clearance, url, skus
+                    )
 
                 if (
                     self._dev_max_pages_per_category != 0
@@ -231,7 +232,7 @@ class ProductInventory(Iterable):
 
 
 class ProductLedger(Iterable):
-    def __init__(self, skus: Iterator[Sku]):
+    def __init__(self, skus: Iterator[model.Sku]):
         self._skus = skus
         pass
 
@@ -256,8 +257,8 @@ class ProductLedger(Iterable):
 
     @staticmethod
     def _get_product_infos(
-        skus: Sequence[Sku],
-    ) -> Sequence[ProductInfo]:
+        skus: Sequence[model.Sku],
+    ) -> Sequence[model.ProductInfo]:
         for ntry in range(5):
             url = "https://apim.canadiantire.ca/v1/product/api/v1/product/sku/PriceAvailability/?lang=en_CA&storeId=64"
             headers = _base_headers.copy()
@@ -290,11 +291,11 @@ class ProductLedger(Iterable):
             response_skus = response["skus"]
             logger.debug("received {} product infos".format(len(response_skus)))
 
-            return [ProductInfo(product_info) for product_info in response_skus]
+            return [model.ProductInfo(product_info) for product_info in response_skus]
 
         raise RuntimeError("Failed to get product info")
 
-    def __iter__(self) -> Iterator[ProductInfo]:
+    def __iter__(self) -> Iterator[model.ProductInfo]:
         # The API limits requests to 50 products
         for batch in self._batches(self._skus, 50):
             for product_info in self._get_product_infos(batch):
