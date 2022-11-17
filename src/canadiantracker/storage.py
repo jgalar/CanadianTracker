@@ -156,65 +156,6 @@ _StorageSku.samples = sqlalchemy.orm.relationship(
 )
 
 
-class ProductRepository:
-    def __init__(self):
-        # Use a factory method to get an instance.
-        raise NotImplementedError
-
-    def products(
-        self, codes: Iterable[str] | None = None
-    ) -> Iterator[model.ProductListingEntry]:
-        raise NotImplementedError
-
-    @property
-    def skus(self) -> Iterator[model.Sku]:
-        raise NotImplementedError
-
-    @property
-    def samples(self) -> Iterator[model.ProductInfoSample]:
-        raise NotImplementedError
-
-    def flush(self):
-        raise NotImplementedError
-
-    def vacuum(self):
-        raise NotImplementedError
-
-    def get_product_listing_by_code(self, product_id: str) -> model.ProductListingEntry:
-        raise NotImplementedError
-
-    def get_sku_by_code(self, sku_code: str) -> model.Sku:
-        raise NotImplementedError
-
-    def get_sku_by_formatted_code(self, sku_formatted_code: str) -> model.Sku:
-        raise NotImplementedError
-
-    def get_product_info_samples_by_code(
-        self, product_id: str
-    ) -> Iterator[model.ProductInfoSample]:
-        raise NotImplementedError
-
-    def add_product_listing_entry(
-        self, product_listing_entry: model.ProductListingEntry
-    ):
-        raise NotImplementedError
-
-    def add_sku(
-        self,
-        product: model.ProductListingEntry,
-        sku: model.Sku,
-    ):
-        raise NotImplementedError
-
-    def add_product_price_sample(
-        self, product_price_sample: model.ProductInfoSample
-    ) -> None:
-        raise NotImplementedError
-
-    def delete_sample(self, sample: model.ProductInfoSample):
-        raise NotImplementedError
-
-
 class InvalidDatabaseRevisionException(Exception):
     def __init__(self, msg: str):
         self._msg = msg
@@ -223,12 +164,12 @@ class InvalidDatabaseRevisionException(Exception):
         return f"Failed to validate database revision: {self._msg}"
 
 
-class _SQLite3ProductRepository(ProductRepository):
+class ProductRepository:
     ALEMBIC_REVISION = "ac8256c291d4"
 
     def __init__(self, path: str):
         db_url = "sqlite:///" + os.path.abspath(path)
-        logger.debug("Creating SQLite3ProductRepository with url `%s`", db_url)
+        logger.debug(f"Creating ProductRepository with url {db_url}")
         self._engine = sqlalchemy.create_engine(db_url, echo=False)
         inspector: sqlalchemy.engine.reflection.Inspector = sqlalchemy.inspect(
             self._engine
@@ -427,4 +368,4 @@ class _SQLite3ProductRepository(ProductRepository):
 
 
 def get_product_repository_from_sqlite_file(path: str) -> ProductRepository:
-    return _SQLite3ProductRepository(path)
+    return ProductRepository(path)
