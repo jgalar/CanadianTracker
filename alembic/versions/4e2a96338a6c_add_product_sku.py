@@ -16,9 +16,9 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.add_column("products_static", sa.Column("sku", sa.String()))
 
 
-def downgrade():
+def downgrade() -> None:
     op.drop_column("products_static", "sku")

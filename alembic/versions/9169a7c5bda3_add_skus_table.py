@@ -19,7 +19,7 @@ depends_on = None
 
 # Ensure the formatting of `sku` is "123-4567-8" (i.e. add the possibly missing
 # leading zeros).
-def normalize_formatted_sku_code(sku):
+def normalize_formatted_sku_code(sku: str) -> str:
     if re.match(r"\d-\d\d\d\d-\d", sku):
         sku = "0" + sku
 
@@ -33,12 +33,12 @@ def normalize_formatted_sku_code(sku):
 
 
 # Convert a formatted SKU code (123-4567-8) to its "internal" form (1234567).
-def sku_code_from_formatted_sku_code(c):
+def sku_code_from_formatted_sku_code(c: str) -> str:
     assert re.match(r"\d\d\d-\d\d\d\d-\d", c)
     return c[0:3] + c[4:8]
 
 
-def upgrade():
+def upgrade() -> None:
     db = op.get_bind()
 
     metadata = sa.MetaData()
@@ -234,6 +234,6 @@ def upgrade():
     op.drop_table("products_dynamic")
 
 
-def downgrade():
+def downgrade() -> None:
     # No way I'm implementing this.
     raise NotImplementedError

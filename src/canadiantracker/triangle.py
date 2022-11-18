@@ -41,9 +41,7 @@ class _ProductCategory:
     def subcategories(self) -> list[_ProductCategory]:
         return self._subcategories
 
-    def visit(
-        self, callback: Callable[[_ProductCategory, int], None], level: int
-    ) -> None:
+    def visit(self, callback: Callable[[_ProductCategory, int], None], level: int):
         callback(self, level)
         for sub in self.subcategories:
             sub.visit(callback, level + 1)
@@ -60,11 +58,11 @@ class _ProductCategories:
     def __init__(self, categories: list[_ProductCategory]):
         self._categories = categories
 
-    def visit(self, callback: Callable[[_ProductCategory, int], None]) -> None:
+    def visit(self, callback: Callable[[_ProductCategory, int], None]):
         for sub in self._categories:
             sub.visit(callback, 1)
 
-    def iter_preorder(self) -> None:
+    def iter_preorder(self):
         """Iterate on the category tree, in pre-order."""
         for cat in self._categories:
             yield from cat.iter_preorder(1)

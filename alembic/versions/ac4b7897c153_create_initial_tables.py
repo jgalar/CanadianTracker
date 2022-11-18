@@ -16,7 +16,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.create_table(
         "products_static",
         sa.Column("index", sa.Integer(), nullable=False),
@@ -53,7 +53,7 @@ def upgrade():
     )
 
 
-def downgrade():
+def downgrade() -> None:
     op.drop_index(op.f("ix_products_dynamic_index"), table_name="products_dynamic")
     op.drop_index(op.f("ix_products_dynamic_code"), table_name="products_dynamic")
     op.drop_table("products_dynamic")

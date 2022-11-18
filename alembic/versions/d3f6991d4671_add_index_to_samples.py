@@ -15,9 +15,9 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.create_index(None, "samples", ["sku_index"])
 
 
-def downgrade():
+def downgrade() -> None:
     pass

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 @click.group()
 @click.option("-d", "--debug", is_flag=True, help="Set logging level to DEBUG")
-def cli(debug: bool) -> None:
+def cli(debug: bool):
     """
     CanadianTracker tracks the inventory and prices of your favorite canadian
     retailer using the internal API that powers canadiantire.ca.
@@ -41,7 +41,7 @@ def cli(debug: bool) -> None:
     help="Query output format (default: json)",
 )
 @click.argument("sku_code", nargs=1)
-def price_history(db_path: str, format: str, sku_code: str) -> None:
+def price_history(db_path: str, format: str, sku_code: str):
     """
     Fetch SKU properties.
     """
@@ -56,7 +56,7 @@ def price_history(db_path: str, format: str, sku_code: str) -> None:
             + "No SKU with code "
             + click.style(sku_code, fg="white", bold=True)
         )
-        return sys.exit(1)
+        sys.exit(1)
 
     if format == "json":
         json_history(sku)
@@ -64,7 +64,7 @@ def price_history(db_path: str, format: str, sku_code: str) -> None:
         plot_history(sku)
 
 
-def plot_history(sku: model.Sku) -> None:
+def plot_history(sku: model.Sku):
     import plotext as plt
 
     plt.datetime.set_datetime_form(date_form="%d/%m/%Y")
@@ -110,7 +110,7 @@ def plot_history(sku: model.Sku) -> None:
     plt.show()
 
 
-def json_history(sku: model.Sku) -> None:
+def json_history(sku: model.Sku):
     import json
 
     # Since the json package doesn't allow us to dump from a generator and

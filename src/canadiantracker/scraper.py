@@ -1,3 +1,4 @@
+from types import FrameType
 import click
 import sys
 import re
@@ -11,7 +12,7 @@ from canadiantracker import triangle, model
 logger = logging.getLogger(__name__)
 
 
-def print_welcome() -> None:
+def print_welcome():
     click.echo(
         click.style(
             "Bienvenue chez Canadian Scraper",
@@ -29,7 +30,7 @@ def print_welcome() -> None:
 
 @click.group()
 @click.option("-d", "--debug", is_flag=True, help="Set logging level to DEBUG")
-def cli(debug: bool) -> None:
+def cli(debug: bool):
     """
     CanadianTracker tracks the inventory and prices of your favorite canadian
     retailer using the internal API that powers canadiantire.ca.
@@ -100,7 +101,7 @@ def scrape_products(
     category_levels: str,
     dev_max_categories: int,
     dev_max_pages_per_category: int,
-) -> None:
+):
     """
     Fetch static product properties.
     """
@@ -212,7 +213,7 @@ def scrape_skus(db_path: str, products: str | None):
     show_default=True,
     default=True,
 )
-def scrape_prices(db_path: str, older_than: int, discard_equal: bool) -> None:
+def scrape_prices(db_path: str, older_than: int, discard_equal: bool):
     """
     Fetch current product prices.
     """
@@ -250,7 +251,7 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool) -> None:
     metavar="PATH",
     help="Path to sqlite db instance",
 )
-def prune_samples(db_path: str) -> None:
+def prune_samples(db_path: str):
     repository = cli_utils.get_product_repository_from_sqlite_file_check_version(
         db_path
     )
@@ -259,13 +260,13 @@ def prune_samples(db_path: str) -> None:
 
     # Handle ctrl-C gracefully to avoid aborting (and rolling back) the changes
     # we have so far.
-    def handle_sigint(signo, frame):
+    def handle_sigint(signo: int, frame: FrameType):
         nonlocal quit
         quit = True
 
     signal.signal(signal.SIGINT, handle_sigint)
 
-    def show_item(item):
+    def show_item(item: model.ProductInfoSample) -> str:
         nonlocal n_deleted
 
         return f"Deleted: {n_deleted}"
