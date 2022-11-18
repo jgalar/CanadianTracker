@@ -1,13 +1,13 @@
-from types import FrameType
-import click
-import sys
-import re
 import logging
+import re
 import signal
+import sys
 import textwrap
-from canadiantracker import cli_utils
-from canadiantracker import triangle, model
+from types import FrameType
 
+import click
+
+from canadiantracker import cli_utils, model, triangle
 
 logger = logging.getLogger(__name__)
 
