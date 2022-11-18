@@ -1,3 +1,4 @@
 [flake8]
 ignore = E501, W503, ANN101, ANN102, ANN204
-
+suppress_dummy_args = True
+suppress_none_returning = True

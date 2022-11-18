@@ -192,15 +192,13 @@ class ProductRepository:
 
     def add_product_listing_entry(
         self, product_listing_entry: model.ProductListingEntry
-    ) -> None:
+    ):
         raise NotImplementedError
 
-    def add_product_price_sample(
-        self, product_price_sample: model.ProductInfoSample
-    ) -> None:
+    def add_product_price_sample(self, product_price_sample: model.ProductInfoSample):
         raise NotImplementedError
 
-    def delete_sample(self, sample: model.ProductInfoSample) -> None:
+    def delete_sample(self, sample: model.ProductInfoSample):
         raise NotImplementedError
 
 
@@ -298,7 +296,7 @@ class _SQLite3ProductRepository(ProductRepository):
 
     def add_product_listing_entry(
         self, product_listing_entry: model.ProductListingEntry
-    ) -> None:
+    ):
         logger.debug(
             "Attempting to add product: code = `%s`", product_listing_entry.code
         )
@@ -368,7 +366,7 @@ class _SQLite3ProductRepository(ProductRepository):
         self,
         product_infos: Iterator[model.ProductInfo],
         discard_equal: bool,
-    ) -> None:
+    ):
         for info in product_infos:
             # Some responses have null as the current price.
             price = info.price
@@ -408,7 +406,7 @@ class _SQLite3ProductRepository(ProductRepository):
             )
             self._session.add(new_sample)
 
-    def delete_sample(self, sample: model.ProductInfoSample) -> None:
+    def delete_sample(self, sample: model.ProductInfoSample):
         self._session.delete(sample)
 
 

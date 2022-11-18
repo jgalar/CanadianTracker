@@ -16,7 +16,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     db = op.get_bind()
 
     print(">>> Adding price_cents column")
@@ -31,5 +31,5 @@ def upgrade():
         batch_op.drop_column("price")
 
 
-def downgrade():
+def downgrade() -> None:
     pass
