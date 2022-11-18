@@ -1,10 +1,10 @@
-import click
-import sys
-import logging
 import decimal
-from canadiantracker import cli_utils
-from canadiantracker import model
+import logging
+import sys
 
+import click
+
+from canadiantracker import cli_utils, model
 
 logger = logging.getLogger(__name__)
 

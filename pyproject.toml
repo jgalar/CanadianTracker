@@ -24,6 +24,7 @@ alembic = "^1.7.7"
 black = {version = "^22.3.0", allow-prereleases = true}
 flake8 = "^5.0.4"
 flake8-annotations = "^2.9.1"
+isort = "^5.10.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -33,3 +34,6 @@ build-backend = "poetry.core.masonry.api"
 ctscraper = "canadiantracker.scraper:cli"
 ctquery = "canadiantracker.query:cli"
 ctserver = "canadiantracker.server:cli"
+
+[tool.isort]
+profile = "black"

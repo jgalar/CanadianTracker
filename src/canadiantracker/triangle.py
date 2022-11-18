@@ -1,12 +1,16 @@
 from __future__ import annotations
-from datetime import datetime
+
 import decimal
-from typing import Callable, Generator, Tuple
-import requests
 import logging
-import latest_user_agents
 import time
-from collections.abc import Sequence, Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
+from datetime import datetime
+from typing import Callable, Generator, Tuple
+
+import fake_useragent
+import latest_user_agents
+import requests
+
 from canadiantracker import model
 
 logger = logging.getLogger(__name__)

@@ -1,12 +1,12 @@
-import os
 import json
+import os
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from canadiantracker import storage, model
+from canadiantracker import model, storage
 
 app = FastAPI()
 app.mount(

@@ -1,13 +1,13 @@
 from __future__ import annotations
+
+import datetime
 import decimal
 from typing import Iterable
+
 import sqlalchemy
 import sqlalchemy.orm
+
 from canadiantracker import model
-import os
-import datetime
-from collections.abc import Iterator
-import logging
 
 logger = logging.getLogger(__name__)
 
