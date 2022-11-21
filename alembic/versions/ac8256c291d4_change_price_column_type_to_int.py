@@ -18,8 +18,6 @@ depends_on = None
 
 def upgrade():
     db = op.get_bind()
-    metadata = sa.MetaData()
-    samples_table = sa.Table("samples", metadata, autoload_with=op.get_bind().engine)
 
     print(">>> Adding price_cents column")
     op.add_column("samples", sa.Column("price_cents", sa.Integer(), nullable=True))

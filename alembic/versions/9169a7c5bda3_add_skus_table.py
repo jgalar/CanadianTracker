@@ -16,6 +16,7 @@ down_revision = "4e2a96338a6c"
 branch_labels = None
 depends_on = None
 
+
 # Ensure the formatting of `sku` is "123-4567-8" (i.e. add the possibly missing
 # leading zeros).
 def normalize_formatted_sku_code(sku):
@@ -187,7 +188,7 @@ def upgrade():
             print(f"Could not find SKU with code {sku_code}")
             prod_row = db.execute(
                 sa.text(
-                    f'SELECT "index" FROM products_static WHERE code = :sku_code LIMIT 1'
+                    'SELECT "index" FROM products_static WHERE code = :sku_code LIMIT 1'
                 ),
                 {"sku_code": sku_code + "P"},
             ).first()
@@ -207,7 +208,7 @@ def upgrade():
                 sku_code_to_index[sku_code] = sku_index
             else:
                 # No SKU nor product with that code.  Weird, but there's nothing we can do.
-                print(f"  -> Could not find product with that code, dropping sample")
+                print("  -> Could not find product with that code, dropping sample")
                 continue
 
         sku_index = sku_code_to_index[sku_code]
