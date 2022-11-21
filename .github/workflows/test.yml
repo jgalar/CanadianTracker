@@ -21,6 +21,8 @@ jobs:
         run: poetry install
       - name: Black
         run: poetry run black --check --diff .
+      - name: flake8
+        run: poetry run flake8 .
       - name: Run help
         run: poetry run ctscraper --help
       - name: Run tests

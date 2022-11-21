@@ -24,7 +24,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from canadiantracker.storage import sqlalchemy_base
+from canadiantracker.storage import sqlalchemy_base  # noqa: E402
 
 target_metadata = sqlalchemy_base.metadata
 
