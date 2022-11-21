@@ -140,7 +140,8 @@ def upgrade() -> None:
 
     print(">>> Dropping products_static.sku column")
     # Drop the `sku` column.
-    op.drop_column("products_static", "sku")
+    with op.batch_alter_table("products_static") as batch_op:
+        batch_op.drop_column("sku")
 
     # Create a new table for the samples
     print(">>> Creating samples table")
