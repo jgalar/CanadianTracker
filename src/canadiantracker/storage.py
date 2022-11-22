@@ -7,45 +7,46 @@ import os
 from typing import Iterable, Iterator
 
 import sqlalchemy
-import sqlalchemy.orm
+from sqlalchemy import orm
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from canadiantracker import model
 
 logger = logging.getLogger(__name__)
 
-sqlalchemy_metadata = sqlalchemy.MetaData(
-    naming_convention={
-        "ix": "ix_%(column_0_label)s",
-        "uq": "uq_%(table_name)s_%(column_0_name)s",
-        "ck": "ck_%(table_name)s_%(constraint_name)s",
-        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-        "pk": "pk_%(table_name)s",
-    }
-)
 
-sqlalchemy_base = sqlalchemy.orm.declarative_base(metadata=sqlalchemy_metadata)
+class _Base(orm.DeclarativeBase):
+    metadata = sqlalchemy.MetaData(
+        naming_convention={
+            "ix": "ix_%(column_0_label)s",
+            "uq": "uq_%(table_name)s_%(column_0_name)s",
+            "ck": "ck_%(table_name)s_%(constraint_name)s",
+            "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+            "pk": "pk_%(table_name)s",
+        }
+    )
 
 
-class _AlembicRevision(sqlalchemy_base):
+class _AlembicRevision(_Base):
     __tablename__ = "alembic_version"
 
     version_num = sqlalchemy.Column(sqlalchemy.String, primary_key=True)
 
 
-class _StorageProductListingEntry(sqlalchemy_base):
+class _StorageProductListingEntry(_Base):
     # static product properties
     __tablename__ = "products_static"
 
-    index = sqlalchemy.Column(
-        sqlalchemy.Integer, primary_key=True, unique=True, index=True
-    )
-    name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
-    code = sqlalchemy.Column(sqlalchemy.String, unique=True, nullable=False)
-    is_in_clearance = sqlalchemy.Column(sqlalchemy.Boolean)
+    index: Mapped[int] = mapped_column(primary_key=True, unique=True, index=True)
+    name: Mapped[str]
+    code: Mapped[str] = mapped_column(unique=True)
+    is_in_clearance: Mapped[bool | None]
     # last time this entry was returned when listing the inventory
     # this will be used to prune stale product entries
-    last_listed = sqlalchemy.Column(sqlalchemy.DateTime)
-    url = sqlalchemy.Column(sqlalchemy.String)
+    last_listed: Mapped[datetime.datetime | None]
+    url: Mapped[str | None]
+
+    skus: Mapped[list[_StorageSku]] = relationship(back_populates="product")
 
     def __init__(self, name: str, code: str, is_in_clearance: bool, url: str):
         self.name = name
@@ -55,20 +56,20 @@ class _StorageProductListingEntry(sqlalchemy_base):
         self.url = url
 
 
-class _StorageSku(sqlalchemy_base):
+class _StorageSku(_Base):
     # skus table
     __tablename__ = "skus"
 
-    index = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
-    code = sqlalchemy.Column(sqlalchemy.String, nullable=False)
-    formatted_code = sqlalchemy.Column(sqlalchemy.String)
-    product_index = sqlalchemy.Column(
-        sqlalchemy.Integer, sqlalchemy.ForeignKey("products_static.index")
+    index: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str]
+    formatted_code: Mapped[str | None]
+    product_index: Mapped[int] = mapped_column(
+        sqlalchemy.ForeignKey("products_static.index")
     )
 
-    product = sqlalchemy.orm.relationship(
-        "_StorageProductListingEntry", back_populates="skus"
-    )
+    product: Mapped[_StorageProductListingEntry] = relationship(back_populates="skus")
+
+    samples: Mapped[list[_StorageProductSample]] = relationship(back_populates="sku")
 
     def __init__(
         self,
@@ -94,30 +95,21 @@ class _StorageSku(sqlalchemy_base):
         )
 
 
-_StorageProductListingEntry.skus = sqlalchemy.orm.relationship(
-    "_StorageSku", back_populates="product"
-)
-
-
-class _StorageProductSample(sqlalchemy_base):
+class _StorageProductSample(_Base):
     # sample of dynamic product properties
     __tablename__ = "samples"
 
-    index = sqlalchemy.Column(
-        sqlalchemy.Integer, primary_key=True, unique=True, index=True
-    )
-    sample_time = sqlalchemy.Column(sqlalchemy.DateTime, nullable=False)
-    sku_index = sqlalchemy.Column(
-        sqlalchemy.Integer,
+    index: Mapped[int] = mapped_column(primary_key=True, unique=True, index=True)
+    sample_time: Mapped[datetime.date]
+    sku_index: Mapped[int] = mapped_column(
         sqlalchemy.ForeignKey("skus.index"),
-        nullable=False,
         index=True,
     )
-    in_promo = sqlalchemy.Column(sqlalchemy.Boolean, nullable=False)
-    raw_payload = sqlalchemy.Column(sqlalchemy.String, nullable=True)
-    price_cents = sqlalchemy.Column(sqlalchemy.Numeric, nullable=False)
+    in_promo: Mapped[bool]
+    raw_payload: Mapped[str | None]
+    price_cents: Mapped[int]
 
-    sku = sqlalchemy.orm.relationship("_StorageSku", back_populates="samples")
+    sku: Mapped[list[_StorageSku]] = relationship(back_populates="samples")
 
     def __init__(
         self,
@@ -151,11 +143,6 @@ class _StorageProductSample(sqlalchemy_base):
         )
 
 
-_StorageSku.samples = sqlalchemy.orm.relationship(
-    "_StorageProductSample", back_populates="sku"
-)
-
-
 class InvalidDatabaseRevisionException(Exception):
     def __init__(self, msg: str):
         self._msg = msg
@@ -179,9 +166,7 @@ class ProductRepository:
                 "database is missing the alembic_version table"
             )
 
-        self._session: sqlalchemy.orm.Session = sqlalchemy.orm.sessionmaker(
-            bind=self._engine
-        )()
+        self._session: sqlalchemy.Session = orm.sessionmaker(bind=self._engine)()
 
         revs: list[_AlembicRevision] = self._session.query(_AlembicRevision).all()
 
