@@ -161,7 +161,7 @@ def scrape_inventory(
     help="Discard the previous last samples when equal to new samples",
     is_flag=True,
     show_default=True,
-    default=False,
+    default=True,
 )
 def scrape_prices(db_path: str, older_than: int, discard_equal: bool) -> None:
     """
