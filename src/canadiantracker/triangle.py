@@ -4,7 +4,7 @@ import decimal
 from typing import Callable, Generator, Tuple
 import requests
 import logging
-import fake_useragent
+import latest_user_agents
 import time
 from collections.abc import Sequence, Iterable, Iterator
 
@@ -252,7 +252,7 @@ class ProductLedger(Iterable):
 
     @staticmethod
     def _user_agent() -> str:
-        return fake_useragent.UserAgent().random
+        return latest_user_agents.get_random_user_agent()
 
     @staticmethod
     def _get_product_infos(
