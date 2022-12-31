@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime
 import decimal
-from typing import Iterable
 
 
 class ProductInfo:

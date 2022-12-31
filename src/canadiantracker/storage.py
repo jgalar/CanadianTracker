@@ -4,7 +4,7 @@ import datetime
 import decimal
 import logging
 import os
-from typing import Iterable
+from typing import Iterable, Iterator
 
 import sqlalchemy
 import sqlalchemy.orm

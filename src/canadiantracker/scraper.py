@@ -154,7 +154,9 @@ def scrape_products(
     help="Comma-separated list of product codes to scrape SKUs for",
 )
 def scrape_skus(db_path: str, products: str | None):
-    repository = get_product_repository_from_sqlite_file_check_version(db_path)
+    repository = cli_utils.get_product_repository_from_sqlite_file_check_version(
+        db_path
+    )
 
     if products is not None:
         products = products.split(",")
@@ -170,8 +172,6 @@ def scrape_skus(db_path: str, products: str | None):
         "length": repository.products().count(),
     }
 
-    count = repository.products().count()
-
     if logging.root.level == logging.DEBUG:
         # Deactivate progress bar in debug mode since its updates make the
         # output very spammy
@@ -182,11 +182,11 @@ def scrape_skus(db_path: str, products: str | None):
     ) as products_wrapper:
         for i, product in enumerate(products_wrapper):
             try:
-                for sku in canadiantracker.triangle.SkusInventory(product):
+                for sku in triangle.SkusInventory(product):
                     repository.add_sku(product, sku)
-            except canadiantracker.triangle.NoSuchProductException:
+            except triangle.NoSuchProductException:
                 logger.debug(f"Product {product} no longer exists")
-            except canadiantracker.triangle.UnknownProductErrorException:
+            except triangle.UnknownProductErrorException:
                 logger.debug(f"Unknown error while getting product {product}")
 
 

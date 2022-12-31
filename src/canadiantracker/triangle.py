@@ -7,7 +7,6 @@ from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
 from typing import Callable, Generator, Tuple
 
-import fake_useragent
 import latest_user_agents
 import requests
 
@@ -243,7 +242,7 @@ class SkusInventory(Iterable):
         self._product = product
 
     @staticmethod
-    def _request_page(product_code) -> requests.Response:
+    def _request_page(product_code: str) -> requests.Response:
         """Fetch one product page."""
         headers = _base_headers.copy()
         headers["user-agent"] = _random_user_agent()
