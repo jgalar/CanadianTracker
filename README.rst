@@ -7,8 +7,8 @@ retailer using the internal API that powers
 `CanadianTire.ca <https://www.canadiantire.ca>`_.
 
 Due to the design of the Canadian Tire API and its relatively poor
-performance, it does so in two steps implemented as two commands:
-``scrape-inventory`` and ``scrape-prices``.
+performance, it does so in multiple steps implemented as the following commands:
+``scrape-products``, ``scrape-skus``, and ``scrape-prices``.
 
 Use ``--help`` on any of the commands for more information on their role and options.
 
@@ -35,7 +35,8 @@ of products:
 
 .. code-block:: console:
 
-  $ poetry run ctscraper scrape-inventory --db-path inventory.sqlite
+  $ poetry run ctscraper scrape-products --db-path inventory.sqlite
+  $ poetry run ctscraper scrape-skus --db-path inventory.sqlite
 
 Once this is done, you can scrape the prices of the products in the inventory:
 
