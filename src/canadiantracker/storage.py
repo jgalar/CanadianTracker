@@ -33,7 +33,7 @@ class _AlembicRevision(_Base):
     version_num = sqlalchemy.Column(sqlalchemy.String, primary_key=True)
 
 
-class _StorageProductListingEntry(_Base):
+class _StorageProduct(_Base):
     # static product properties
     __tablename__ = "products_static"
 
@@ -67,7 +67,7 @@ class _StorageSku(_Base):
         sqlalchemy.ForeignKey("products_static.index")
     )
 
-    product: Mapped[_StorageProductListingEntry] = relationship(back_populates="skus")
+    product: Mapped[_StorageProduct] = relationship(back_populates="skus")
 
     samples: Mapped[list[_StorageProductSample]] = relationship(back_populates="sku")
 
@@ -75,7 +75,7 @@ class _StorageSku(_Base):
         self,
         code: str,
         formatted_code: str,
-        product: _StorageProductListingEntry,
+        product: _StorageProduct,
     ):
         self.code = code
         self.formatted_code = formatted_code
@@ -183,13 +183,11 @@ class ProductRepository:
         if hasattr(self, "_session"):
             self._session.commit()
 
-    def products(
-        self, codes: Iterable[str] | None = None
-    ) -> Iterator[model.ProductListingEntry]:
-        q = self._session.query(_StorageProductListingEntry)
+    def products(self, codes: Iterable[str] | None = None) -> Iterator[model.Product]:
+        q = self._session.query(_StorageProduct)
 
         if codes is not None:
-            q = q.filter(_StorageProductListingEntry.code.in_(codes))
+            q = q.filter(_StorageProduct.code.in_(codes))
 
         return q
 
@@ -217,8 +215,8 @@ class ProductRepository:
             self._session.commit()
         self._session.execute("VACUUM")
 
-    def get_product_listing_by_code(self, product_id: str) -> model.ProductListingEntry:
-        result = self.products().filter(_StorageProductListingEntry.code == product_id)
+    def get_product_by_code(self, product_id: str) -> model.Product:
+        result = self.products().filter(_StorageProduct.code == product_id)
         return result.first() if result else None
 
     def get_sku_by_code(self, code: str) -> _StorageSku:
@@ -239,26 +237,20 @@ class ProductRepository:
         )
         return result.all() if result else None
 
-    def add_product_listing_entry(
-        self, product_listing_entry: model.ProductListingEntry
-    ):
-        logger.debug(
-            "Attempting to add product: code = `%s`", product_listing_entry.code
-        )
+    def add_product(self, product: model.Product):
+        logger.debug("Attempting to add product: code = `%s`", product.code)
         entry = (
-            self._session.query(_StorageProductListingEntry)
-            .filter_by(code=product_listing_entry.code)
-            .first()
+            self._session.query(_StorageProduct).filter_by(code=product.code).first()
         )
         logger.debug("Product %s present in storage", "is" if entry else "is not")
 
         if not entry:
             self._session.add(
-                _StorageProductListingEntry(
-                    product_listing_entry.name,
-                    product_listing_entry.code.upper(),
-                    product_listing_entry.is_in_clearance,
-                    product_listing_entry.url,
+                _StorageProduct(
+                    product.name,
+                    product.code.upper(),
+                    product.is_in_clearance,
+                    product.url,
                 )
             )
         else:
@@ -267,18 +259,18 @@ class ProductRepository:
 
             # Update URL, name and "in clearance" status, these can change over
             # time.
-            if entry.url != product_listing_entry.url:
-                entry.url = product_listing_entry.url
+            if entry.url != product.url:
+                entry.url = product.url
 
-            if entry.name != product_listing_entry.name:
-                entry.name = product_listing_entry.name
+            if entry.name != product.name:
+                entry.name = product.name
 
-            if entry.is_in_clearance != product_listing_entry.is_in_clearance:
-                entry.is_in_clearance = product_listing_entry.is_in_clearance
+            if entry.is_in_clearance != product.is_in_clearance:
+                entry.is_in_clearance = product.is_in_clearance
 
     def add_sku(
         self,
-        product: model.ProductListingEntry,
+        product: model.Product,
         sku: model.Sku,
     ):
         sku_entry: _StorageSku | None = (
@@ -288,7 +280,7 @@ class ProductRepository:
         if sku_entry is None:
             logger.debug(f"  SKU {sku.code} not present in storage, adding")
             # Create a new sku entry.
-            product_entry = self.get_product_listing_by_code(product.code)
+            product_entry = self.get_product_by_code(product.code)
             assert product_entry is not None
             self._session.add(_StorageSku(sku.code, sku.formatted_code, product_entry))
         else:
