@@ -107,7 +107,7 @@ def _random_user_agent() -> str:
 class ProductInventory(Iterable):
     def __init__(
         self,
-        category_levels_to_scrape: list[int] = None,
+        category_levels_to_scrape: list[int] | None = None,
         dev_max_categories: int = 0,
         dev_max_pages_per_category: int = 0,
     ):
