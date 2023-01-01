@@ -159,8 +159,9 @@ def scrape_skus(db_path: str, products: str | None):
         db_path
     )
 
+    products_list: list[str] | None = None
     if products is not None:
-        products = products.split(",")
+        products_list = products.split(",")
 
     progress_bar_settings = {
         "label": "Scraping SKUs",
@@ -179,7 +180,7 @@ def scrape_skus(db_path: str, products: str | None):
         progress_bar_settings["bar_template"] = ""
 
     with click.progressbar(
-        repository.products(codes=products), **progress_bar_settings
+        repository.products(codes=products_list), **progress_bar_settings
     ) as products_wrapper:
         for i, product in enumerate(products_wrapper):
             try:
