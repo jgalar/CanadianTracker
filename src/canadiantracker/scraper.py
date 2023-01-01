@@ -58,7 +58,7 @@ def progress_bar_product_name(
 def validate_category_levels(
     ctx: click.Context, param: click.Parameter, value: str | None
 ) -> str | None:
-    """Validate that the category levels argument is a comman-separated list of
+    """Validate that the category levels argument is a comma-separated list of
     integers."""
     if value is not None and not re.match(r"\d+(,\d+)*", value):
         raise click.BadParameter("format must be a comma-separated list of integers")
