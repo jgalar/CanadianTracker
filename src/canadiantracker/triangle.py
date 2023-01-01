@@ -324,9 +324,6 @@ class ProductLedger(Iterable):
                 time.sleep(5)
                 continue
 
-            with open("/tmp/res", "w") as f:
-                f.write(response.text)
-
             response = response.json(parse_float=decimal.Decimal)
             response_skus = response["skus"]
             logger.debug("received {} product infos".format(len(response_skus)))
