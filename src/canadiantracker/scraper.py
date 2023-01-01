@@ -98,7 +98,7 @@ def validate_category_levels(
 )
 def scrape_products(
     db_path: str,
-    category_levels: str,
+    opt_category_levels: str | None,
     dev_max_categories: int,
     dev_max_pages_per_category: int,
 ):
@@ -106,8 +106,9 @@ def scrape_products(
     Fetch static product properties.
     """
 
-    if category_levels is not None:
-        category_levels = [int(x) for x in category_levels.split(",")]
+    category_levels: list[int] | None = None
+    if opt_category_levels is not None:
+        category_levels = [int(x) for x in opt_category_levels.split(",")]
 
     repository = cli_utils.get_product_repository_from_sqlite_file_check_version(
         db_path
