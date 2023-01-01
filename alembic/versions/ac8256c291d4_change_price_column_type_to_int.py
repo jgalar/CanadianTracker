@@ -22,7 +22,7 @@ def upgrade() -> None:
     print(">>> Adding price_cents column")
     op.add_column("samples", sa.Column("price_cents", sa.Integer(), nullable=True))
     print(">>> Filling price_cents column")
-    db.execute("UPDATE samples SET price_cents = 100 * price")
+    db.execute(sa.text("UPDATE samples SET price_cents = 100 * price"))
 
     with op.batch_alter_table("samples") as batch_op:
         print(">>> Marking price_cents column non-nullable")
