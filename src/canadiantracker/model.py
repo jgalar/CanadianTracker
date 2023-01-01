@@ -35,7 +35,7 @@ class ProductInfo:
         return str(self.__dict__)
 
 
-class ProductListingEntry:
+class Product:
     def __init__(self, code: str, name: str, is_in_clearance: bool, url: str):
         self._code = code
         self._name = name

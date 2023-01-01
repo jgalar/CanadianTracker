@@ -68,7 +68,7 @@ def serialize_sku(sku: model.Sku) -> dict:
 
 @app.get("/api/products/{product_code}")
 async def api_product(product_code: str) -> dict:
-    product = _repository.get_product_listing_by_code(product_code)
+    product = _repository.get_product_by_code(product_code)
 
     return {"skus": [serialize_sku(sku) for sku in product.skus]}
 
@@ -89,7 +89,7 @@ async def products(request: Request) -> Jinja2Templates.TemplateResponse:
 async def one_product(
     request: Request, product_code: str
 ) -> Jinja2Templates.TemplateResponse:
-    product = _repository.get_product_listing_by_code(product_code)
+    product = _repository.get_product_by_code(product_code)
     return _templates.TemplateResponse(
         "product.html", {"request": request, "product": product}
     )

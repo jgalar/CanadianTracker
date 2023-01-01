@@ -50,9 +50,9 @@ def cli(debug: bool):
 
 
 def progress_bar_product_name(
-    product_listing_entry: model.ProductListingEntry,
+    product: model.Product,
 ) -> str:
-    return product_listing_entry.name
+    return product.name
 
 
 def validate_category_levels(
@@ -135,8 +135,8 @@ def scrape_products(
         progress_bar_settings["bar_template"] = ""
 
     with click.progressbar(inventory, **progress_bar_settings) as bar_wrapper:
-        for product_listing in bar_wrapper:
-            repository.add_product_listing_entry(product_listing)
+        for product in bar_wrapper:
+            repository.add_product(product)
 
 
 @cli.command(name="scrape-skus", short_help="fetch static product properties")

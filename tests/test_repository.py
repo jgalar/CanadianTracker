@@ -58,9 +58,7 @@ def repository(tmp_path: str) -> storage.ProductRepository:
 
 
 def test_add_product(repository: storage.ProductRepository):
-    repository.add_product_listing_entry(
-        model.ProductListingEntry("1234567", "Hello", False, "/foo")
-    )
+    repository.add_product(model.Product("1234567", "Hello", False, "/foo"))
     products = list(repository.products())
     assert len(products) == 1
     p = products[0]
