@@ -29,6 +29,7 @@ def repository(tmp_path: str) -> storage.ProductRepository:
     def do_upgrade(
         heads: tuple[str, ...] | tuple[()], mc: alembic.migration.MigrationContext
     ) -> list[alembic.migration.MigrationStep]:
+        assert mc.script
         rev_scripts = reversed(
             list(
                 mc.script.iterate_revisions(
