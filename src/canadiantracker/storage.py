@@ -4,7 +4,8 @@ import datetime
 import decimal
 import logging
 import os
-from typing import Iterable, Iterator
+import re
+from typing import Iterator
 
 import sqlalchemy
 from sqlalchemy import orm
@@ -151,6 +152,14 @@ class InvalidDatabaseRevisionException(Exception):
         return f"Failed to validate database revision: {self._msg}"
 
 
+def _validate_product_code_format(product_code: str):
+    """Validate that the given product code is in the expected format.
+
+    If not, raise a ValueError."""
+    if not re.match(r"^\d{7}P$", product_code):
+        raise ValueError(f"Wrong format for product code: {product_code}")
+
+
 class ProductRepository:
     ALEMBIC_REVISION = "ac8256c291d4"
 
@@ -183,10 +192,13 @@ class ProductRepository:
         if hasattr(self, "_session"):
             self._session.commit()
 
-    def products(self, codes: Iterable[str] | None = None) -> Iterator[model.Product]:
+    def products(self, codes: list[str] | None = None) -> Iterator[model.Product]:
         q = self._session.query(_StorageProduct)
 
         if codes is not None:
+            for code in codes:
+                _validate_product_code_format(code)
+
             q = q.filter(_StorageProduct.code.in_(codes))
 
         return q
@@ -215,8 +227,9 @@ class ProductRepository:
             self._session.commit()
         self._session.execute("VACUUM")
 
-    def get_product_by_code(self, product_id: str) -> model.Product:
-        result = self.products().filter(_StorageProduct.code == product_id)
+    def get_product_by_code(self, product_code: str) -> model.Product:
+        _validate_product_code_format(product_code)
+        result = self.products().filter(_StorageProduct.code == product_code)
         return result.first() if result else None
 
     def get_sku_by_code(self, code: str) -> _StorageSku:
@@ -239,6 +252,7 @@ class ProductRepository:
 
     def add_product(self, product: model.Product):
         logger.debug("Attempting to add product: code = `%s`", product.code)
+        _validate_product_code_format(product.code)
         entry = (
             self._session.query(_StorageProduct).filter_by(code=product.code).first()
         )
@@ -248,7 +262,7 @@ class ProductRepository:
             self._session.add(
                 _StorageProduct(
                     product.name,
-                    product.code.upper(),
+                    product.code,
                     product.is_in_clearance,
                     product.url,
                 )

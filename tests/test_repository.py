@@ -59,12 +59,48 @@ def repository(tmp_path: str) -> storage.ProductRepository:
 
 
 def test_add_product(repository: storage.ProductRepository):
-    repository.add_product(model.Product("1234567", "Hello", False, "/foo"))
+    repository.add_product(model.Product("1234567P", "Hello", False, "/foo"))
     products = list(repository.products())
     assert len(products) == 1
     p = products[0]
-    assert p.code == "1234567"
+    assert p.code == "1234567P"
     assert not p.is_in_clearance
     assert p.name == "Hello"
     assert p.url == "/foo"
     assert len(list(p.skus)) == 0
+
+
+def test_add_product_wrong_code_format(repository: storage.ProductRepository):
+    with pytest.raises(ValueError):
+        repository.add_product(model.Product("1234567", "Hello", False, "/foo"))
+
+
+def test_list_products_filter(repository: storage.ProductRepository):
+    repository.add_product(model.Product("1234567P", "Hello", False, "/foo"))
+    repository.add_product(model.Product("2345678P", "Hello", False, "/foo"))
+    repository.add_product(model.Product("3456789P", "Hello", False, "/foo"))
+
+    products = sorted(
+        repository.products(["1234567P", "3456789P"]), key=lambda p: p.code
+    )
+    assert len(products) == 2
+    assert products[0].code == "1234567P"
+    assert products[1].code == "3456789P"
+
+
+def test_list_products_filter_wrong_code_format(repository: storage.ProductRepository):
+    with pytest.raises(ValueError):
+        repository.products(["1234567p"])
+
+
+def test_get_product_by_code(repository: storage.ProductRepository):
+    repository.add_product(model.Product("1234567P", "Hello", False, "/foo"))
+
+    product = repository.get_product_by_code("1234567P")
+    assert product
+    assert product.code == "1234567P"
+
+
+def test_get_product_by_code_wrong_code_format(repository: storage.ProductRepository):
+    with pytest.raises(ValueError):
+        repository.get_product_by_code("1234567p")
