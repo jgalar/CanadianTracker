@@ -294,7 +294,7 @@ def prune_samples(db_path: str):
         # basically, True if we should not delete that sample.  Samples are only
         # deleted when they are pushed out by a more recent sample, thus we
         # don't delete the very last sample for each SKU index.
-        last_samples: dict[int, (model.ProductInfoSample, bool)] = dict()
+        last_samples: dict[int, tuple[model.ProductInfoSample, bool]] = dict()
 
         for sample in samples:
             last_sample_tuple = last_samples.get(sample.sku_index)
