@@ -175,7 +175,7 @@ class ProductRepository:
                 "database is missing the alembic_version table"
             )
 
-        self._session: sqlalchemy.Session = orm.sessionmaker(bind=self._engine)()
+        self._session: orm.Session = orm.sessionmaker(bind=self._engine)()
 
         revs: list[_AlembicRevision] = self._session.query(_AlembicRevision).all()
 
