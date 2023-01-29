@@ -213,7 +213,7 @@ class ProductRepository:
         # of the risks? 😏
         if self._session.in_transaction():
             self._session.commit()
-        self._session.execute("VACUUM")
+        self._session.execute(sqlalchemy.text("VACUUM"))
 
     def get_product_by_code(self, product_id: str) -> model.Product:
         result = self.products().filter(_StorageProduct.code == product_id)
