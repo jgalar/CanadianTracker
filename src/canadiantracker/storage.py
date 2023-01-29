@@ -225,7 +225,7 @@ class ProductRepository:
         # of the risks? 😏
         if self._session.in_transaction():
             self._session.commit()
-        self._session.execute("VACUUM")
+        self._session.execute(sqlalchemy.text("VACUUM"))
 
     def get_product_by_code(self, product_code: str) -> model.Product:
         _validate_product_code_format(product_code)
