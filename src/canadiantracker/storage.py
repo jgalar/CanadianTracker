@@ -110,7 +110,7 @@ class _StorageProductSample(_Base):
     raw_payload: Mapped[str | None]
     price_cents: Mapped[int]
 
-    sku: Mapped[list[_StorageSku]] = relationship(back_populates="samples")
+    sku: Mapped[_StorageSku] = relationship(back_populates="samples")
 
     def __init__(
         self,
