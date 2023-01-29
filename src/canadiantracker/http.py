@@ -1,6 +1,7 @@
 import json
 import os
 
+import starlette.templating
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -80,7 +81,7 @@ async def api_skus_samples(sku_code: str) -> list[dict]:
 
 
 @app.get("/", response_class=HTMLResponse)
-async def products(request: Request) -> Jinja2Templates.TemplateResponse:
+async def products(request: Request) -> starlette.templating._TemplateResponse:
 
     return _templates.TemplateResponse("index.html", {"request": request})
 
@@ -88,7 +89,7 @@ async def products(request: Request) -> Jinja2Templates.TemplateResponse:
 @app.get("/products/{product_code}", response_class=HTMLResponse)
 async def one_product(
     request: Request, product_code: str
-) -> Jinja2Templates.TemplateResponse:
+) -> starlette.templating._TemplateResponse:
     product = _repository.get_product_by_code(product_code)
     return _templates.TemplateResponse(
         "product.html", {"request": request, "product": product}
@@ -105,7 +106,9 @@ def make_sku_url(sku_code: str, product_url: str) -> str | None:
 
 
 @app.get("/skus/{sku_code}", response_class=HTMLResponse)
-async def one_sku(request: Request, sku_code: str) -> Jinja2Templates.TemplateResponse:
+async def one_sku(
+    request: Request, sku_code: str
+) -> starlette.templating._TemplateResponse:
     sku = _repository.get_sku_by_code(sku_code)
     assert sku
     product_url = sku.product.url
