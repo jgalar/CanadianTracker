@@ -262,7 +262,7 @@ def prune_samples(db_path: str):
 
     # Handle ctrl-C gracefully to avoid aborting (and rolling back) the changes
     # we have so far.
-    def handle_sigint(signo: int, frame: FrameType):
+    def handle_sigint(signo: int, frame: FrameType | None):
         nonlocal quit
         quit = True
 
