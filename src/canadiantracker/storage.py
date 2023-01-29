@@ -116,7 +116,7 @@ class _StorageProductSample(_Base):
         self,
         price: decimal.Decimal,
         in_promo: bool,
-        raw_payload: dict,
+        raw_payload: str,
         sku: _StorageSku,
     ):
         self.price_cents = int(price * 100)
