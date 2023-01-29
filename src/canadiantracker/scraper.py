@@ -268,7 +268,7 @@ def prune_samples(db_path: str):
 
     signal.signal(signal.SIGINT, handle_sigint)
 
-    def show_item(item: model.ProductInfoSample) -> str:
+    def show_item(item: model.ProductInfoSample | None) -> str:
         nonlocal n_deleted
 
         return f"Deleted: {n_deleted}"
