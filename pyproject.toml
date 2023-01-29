@@ -9,7 +9,7 @@ include = ["src/canadiantracker/web/dist/*"]
 python = "^3.10"
 click = "^8.0.3"
 requests = "^2.26.0"
-SQLAlchemy = {version = "^2.0.0rc1", allow-prereleases = true}
+SQLAlchemy = "^2.0.0"
 plotext = "^4.2.0"
 uvicorn = "^0.17.6"
 fastapi = "^0.75.0"
