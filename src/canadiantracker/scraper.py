@@ -76,6 +76,7 @@ def validate_category_levels(
 )
 @click.option(
     "--category-levels",
+    "opt_category_levels",
     type=str,
     callback=validate_category_levels,
     default=None,
