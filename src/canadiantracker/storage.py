@@ -240,16 +240,6 @@ class ProductRepository:
         result = self.skus.filter(_StorageSku.formatted_code == sku_formatted_code)
         return result.first() if result else None
 
-    def get_product_info_samples_by_code(
-        self, product_id: str
-    ) -> Iterator[model.ProductInfoSample]:
-        result = (
-            self._session.query(_StorageProductSample)
-            .filter(_StorageProductSample.code == product_id)
-            .order_by(_StorageProductSample.sample_time)
-        )
-        return result.all() if result else None
-
     def add_product(self, product: model.Product):
         logger.debug("Attempting to add product: code = `%s`", product.code)
         _validate_product_code_format(product.code)
