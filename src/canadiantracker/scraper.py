@@ -7,7 +7,7 @@ from types import FrameType
 
 import click
 
-from canadiantracker import cli_utils, model, triangle
+from canadiantracker import cli_utils, storage, triangle
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +131,9 @@ def scrape_products(
 
     with click.progressbar(inventory, **progress_bar_settings) as bar_wrapper:
         for product in bar_wrapper:
-            repository.add_product(product)
+            repository.add_product(
+                product.code, product.name, product.is_in_clearance, product.url
+            )
 
 
 @cli.command(name="scrape-skus", short_help="fetch static product properties")
@@ -180,7 +182,7 @@ def scrape_skus(db_path: str, products: str | None):
         for i, product in enumerate(products_wrapper):
             try:
                 for sku in triangle.SkusInventory(product):
-                    repository.add_sku(product, sku)
+                    repository.add_sku(product, sku.code, sku.formatted_code)
             except triangle.NoSuchProductException:
                 logger.debug(f"Product {product} no longer exists")
             except triangle.UnknownProductErrorException:
@@ -243,7 +245,9 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool):
             if info.price is None:
                 continue
 
-        repository.add_product_price_sample(info, discard_equal)
+            repository.add_product_price_sample(
+                info.code, info.price, info.in_promo, info.raw_payload, discard_equal
+            )
 
 
 @cli.command(name="prune-samples", short_help="prune redundant samples")
@@ -269,7 +273,7 @@ def prune_samples(db_path: str):
 
     signal.signal(signal.SIGINT, handle_sigint)
 
-    def show_item(item: model.ProductInfoSample | None) -> str:
+    def show_item(item: storage._StorageProductSample | None) -> str:
         nonlocal n_deleted
 
         return f"Deleted: {n_deleted}"
@@ -295,7 +299,7 @@ def prune_samples(db_path: str):
         # basically, True if we should not delete that sample.  Samples are only
         # deleted when they are pushed out by a more recent sample, thus we
         # don't delete the very last sample for each SKU index.
-        last_samples: dict[int, tuple[model.ProductInfoSample, bool]] = dict()
+        last_samples: dict[int, tuple[storage._StorageProductSample, bool]] = dict()
 
         for sample in samples:
             last_sample_tuple = last_samples.get(sample.sku_index)

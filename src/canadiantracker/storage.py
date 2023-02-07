@@ -5,13 +5,10 @@ import decimal
 import logging
 import os
 import re
-from typing import Iterator
 
 import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from canadiantracker import model
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +157,16 @@ def _validate_product_code_format(product_code: str):
         raise ValueError(f"Wrong format for product code: {product_code}")
 
 
+class Sample:
+    def __init__(
+        self, sku_code: str, price: decimal.Decimal, in_promo: bool, raw_payload: str
+    ):
+        self.sku_code = sku_code
+        self.price = price
+        self.in_promo = in_promo
+        self.raw_payload = raw_payload
+
+
 class ProductRepository:
     ALEMBIC_REVISION = "ac8256c291d4"
 
@@ -192,7 +199,7 @@ class ProductRepository:
         if hasattr(self, "_session"):
             self._session.commit()
 
-    def products(self, codes: list[str] | None = None) -> Iterator[model.Product]:
+    def products(self, codes: list[str] | None = None) -> orm.Query[_StorageProduct]:
         q = self._session.query(_StorageProduct)
 
         if codes is not None:
@@ -204,11 +211,11 @@ class ProductRepository:
         return q
 
     @property
-    def skus(self) -> Iterator[model.Sku]:
+    def skus(self) -> orm.Query[_StorageSku]:
         return self._session.query(_StorageSku)
 
     @property
-    def samples(self) -> Iterator[model.ProductInfoSample]:
+    def samples(self) -> orm.Query[_StorageProductSample]:
         # Use "yield_per" to prevent SQLAlchemy from instantiting objects for
         # all samples at once.
         return self._session.query(_StorageProductSample).yield_per(10000)
@@ -227,68 +234,55 @@ class ProductRepository:
             self._session.commit()
         self._session.execute(sqlalchemy.text("VACUUM"))
 
-    def get_product_by_code(self, product_code: str) -> model.Product:
+    def get_product_by_code(self, product_code: str) -> _StorageProduct | None:
         _validate_product_code_format(product_code)
         result = self.products().filter(_StorageProduct.code == product_code)
         return result.first() if result else None
 
-    def get_sku_by_code(self, code: str) -> _StorageSku:
+    def get_sku_by_code(self, code: str) -> _StorageSku | None:
         result = self.skus.filter(_StorageSku.code == code)
         return result.first() if result else None
 
-    def get_sku_by_formatted_code(self, sku_formatted_code: str) -> model.Sku:
+    def get_sku_by_formatted_code(self, sku_formatted_code: str) -> _StorageSku | None:
         result = self.skus.filter(_StorageSku.formatted_code == sku_formatted_code)
         return result.first() if result else None
 
-    def add_product(self, product: model.Product):
-        logger.debug("Attempting to add product: code = `%s`", product.code)
-        _validate_product_code_format(product.code)
-        entry = (
-            self._session.query(_StorageProduct).filter_by(code=product.code).first()
-        )
+    def add_product(self, code: str, name: str, is_in_clearance: bool, url: str):
+        logger.debug("Attempting to add product: code = `%s`", code)
+        _validate_product_code_format(code)
+        entry = self._session.query(_StorageProduct).filter_by(code=code).first()
         logger.debug("Product %s present in storage", "is" if entry else "is not")
 
         if not entry:
-            self._session.add(
-                _StorageProduct(
-                    product.name,
-                    product.code,
-                    product.is_in_clearance,
-                    product.url,
-                )
-            )
+            self._session.add(_StorageProduct(name, code, is_in_clearance, url))
         else:
             # update last listed time
             entry.last_listed = datetime.datetime.now()
 
             # Update URL, name and "in clearance" status, these can change over
             # time.
-            if entry.url != product.url:
-                entry.url = product.url
+            if entry.url != url:
+                entry.url = url
 
-            if entry.name != product.name:
-                entry.name = product.name
+            if entry.name != name:
+                entry.name = name
 
-            if entry.is_in_clearance != product.is_in_clearance:
-                entry.is_in_clearance = product.is_in_clearance
+            if entry.is_in_clearance != is_in_clearance:
+                entry.is_in_clearance = is_in_clearance
 
-    def add_sku(
-        self,
-        product: model.Product,
-        sku: model.Sku,
-    ):
+    def add_sku(self, product: _StorageProduct, code: str, formatted_code: str):
         sku_entry: _StorageSku | None = (
-            self._session.query(_StorageSku).filter_by(code=sku.code).first()
+            self._session.query(_StorageSku).filter_by(code=code).first()
         )
 
         if sku_entry is None:
-            logger.debug(f"  SKU {sku.code} not present in storage, adding")
+            logger.debug(f"  SKU {code} not present in storage, adding")
             # Create a new sku entry.
             product_entry = self.get_product_by_code(product.code)
             assert product_entry is not None
-            self._session.add(_StorageSku(sku.code, sku.formatted_code, product_entry))
+            self._session.add(_StorageSku(code, formatted_code, product_entry))
         else:
-            logger.debug(f"  SKU {sku.code} is already present")
+            logger.debug(f"  SKU {code} is already present")
             if sku_entry.product.code != product.code:
                 # A sku with this code already exists, but it is
                 # associated with a different product. These kind of "migrations"
@@ -296,16 +290,19 @@ class ProductRepository:
                 # product (typically because it changed names). In this case,
                 # edit the existing entry.
                 logger.debug(
-                    f"  SKU {sku.code} is associated to a different product: previous product was '{sku_entry.product.name} ({sku_entry.product.code})', new product is '{product.name} ({product.code})'"
+                    f"  SKU {code} is associated to a different product: previous product was '{sku_entry.product.name} ({sku_entry.product.code})', new product is '{product.name} ({product.code})'"
                 )
                 sku_entry.product = product
 
     def add_product_price_sample(
         self,
-        info: model.ProductInfo,
+        sku_code: str,
+        price: decimal.Decimal,
+        in_promo: bool,
+        raw_payload: str,
         discard_equal: bool,
     ):
-        sku = self.get_sku_by_code(info.code)
+        sku = self.get_sku_by_code(sku_code)
         assert sku
 
         logger.debug(f"adding sample for {sku}")
@@ -320,9 +317,9 @@ class ProductRepository:
             )
 
             if last_sample:
-                equal = info.price == last_sample.price
+                equal = price == last_sample.price
                 logger.debug(
-                    f"last price={last_sample.price}, new price={info.price}, equal={equal}"
+                    f"last price={last_sample.price}, new price={price}, equal={equal}"
                 )
 
                 if equal:
@@ -331,14 +328,11 @@ class ProductRepository:
                 logger.debug("no previous sample found")
 
         new_sample = _StorageProductSample(
-            price=info.price,
-            in_promo=info.in_promo,
-            raw_payload=info.raw_payload,
-            sku=sku,
+            price=price, in_promo=in_promo, raw_payload=raw_payload, sku=sku
         )
         self._session.add(new_sample)
 
-    def delete_sample(self, sample: model.ProductInfoSample):
+    def delete_sample(self, sample: _StorageProductSample):
         self._session.delete(sample)
 
 

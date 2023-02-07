@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from canadiantracker import model, storage
+from canadiantracker import storage
 
 app = FastAPI()
 app.mount(
@@ -49,21 +49,21 @@ async def api_products() -> Response:
     return cached_products_response
 
 
-def serialize_product_info(info: model.ProductInfo) -> dict:
+def serialize_product_info(info: storage._StorageProductSample) -> dict:
     return {
         "price": info.price,
         "in_promo": info.in_promo,
     }
 
 
-def serialize_product_info_sample(sample: model.ProductInfoSample) -> dict:
+def serialize_product_info_sample(sample: storage._StorageProductSample) -> dict:
     return {
         "sample_time": sample.sample_time,
         "product_info": serialize_product_info(sample),
     }
 
 
-def serialize_sku(sku: model.Sku) -> dict:
+def serialize_sku(sku: storage._StorageSku) -> dict:
     return {"code": sku.code, "formatted_code": sku.formatted_code}
 
 
