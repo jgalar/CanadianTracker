@@ -9,7 +9,7 @@ import alembic.context
 import alembic.environment
 import alembic.migration
 import alembic.script
-from canadiantracker import model, storage
+from canadiantracker import storage
 
 
 # Create a database in a temporary directory and initialize it with the
@@ -59,7 +59,7 @@ def repository(tmp_path: str) -> storage.ProductRepository:
 
 
 def test_add_product(repository: storage.ProductRepository):
-    repository.add_product(model.Product("1234567P", "Hello", False, "/foo"))
+    repository.add_product("1234567P", "Hello", False, "/foo")
     products = list(repository.products())
     assert len(products) == 1
     p = products[0]
@@ -72,13 +72,13 @@ def test_add_product(repository: storage.ProductRepository):
 
 def test_add_product_wrong_code_format(repository: storage.ProductRepository):
     with pytest.raises(ValueError):
-        repository.add_product(model.Product("1234567", "Hello", False, "/foo"))
+        repository.add_product("1234567", "Hello", False, "/foo")
 
 
 def test_list_products_filter(repository: storage.ProductRepository):
-    repository.add_product(model.Product("1234567P", "Hello", False, "/foo"))
-    repository.add_product(model.Product("2345678P", "Hello", False, "/foo"))
-    repository.add_product(model.Product("3456789P", "Hello", False, "/foo"))
+    repository.add_product("1234567P", "Hello", False, "/foo")
+    repository.add_product("2345678P", "Hello", False, "/foo")
+    repository.add_product("3456789P", "Hello", False, "/foo")
 
     products = sorted(
         repository.products(["1234567P", "3456789P"]), key=lambda p: p.code
@@ -94,7 +94,7 @@ def test_list_products_filter_wrong_code_format(repository: storage.ProductRepos
 
 
 def test_get_product_by_code(repository: storage.ProductRepository):
-    repository.add_product(model.Product("1234567P", "Hello", False, "/foo"))
+    repository.add_product("1234567P", "Hello", False, "/foo")
 
     product = repository.get_product_by_code("1234567P")
     assert product

@@ -4,7 +4,7 @@ import sys
 
 import click
 
-from canadiantracker import cli_utils, model
+from canadiantracker import cli_utils, storage
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ def price_history(db_path: str, format: str, sku_code: str):
         plot_history(sku)
 
 
-def plot_history(sku: model.Sku):
+def plot_history(sku: storage._StorageSku):
     import plotext as plt
 
     plt.datetime.set_datetime_form(date_form="%d/%m/%Y")
@@ -110,7 +110,7 @@ def plot_history(sku: model.Sku):
     plt.show()
 
 
-def json_history(sku: model.Sku):
+def json_history(sku: storage._StorageSku):
     import json
 
     # Since the json package doesn't allow us to dump from a generator and
