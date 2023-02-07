@@ -237,7 +237,13 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool):
         repository.skus, length=repository.skus.count(), **progress_bar_settings
     ) as skus:
         ledger = triangle.ProductLedger(skus)
-        repository.add_product_price_samples(ledger, discard_equal)
+
+        for info in ledger:
+            # Some responses have null as the current price.
+            if info.price is None:
+                continue
+
+        repository.add_product_price_sample(info, discard_equal)
 
 
 @cli.command(name="prune-samples", short_help="prune redundant samples")

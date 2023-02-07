@@ -300,49 +300,43 @@ class ProductRepository:
                 )
                 sku_entry.product = product
 
-    def add_product_price_samples(
+    def add_product_price_sample(
         self,
-        product_infos: Iterator[model.ProductInfo],
+        info: model.ProductInfo,
         discard_equal: bool,
     ):
-        for info in product_infos:
-            # Some responses have null as the current price.
-            price = info.price
-            if price is None:
-                continue
+        sku = self.get_sku_by_code(info.code)
+        assert sku
 
-            sku = self.get_sku_by_code(info.code)
-            assert sku
+        logger.debug(f"adding sample for {sku}")
 
-            logger.debug(f"adding sample for {sku}")
+        if discard_equal:
+            last_sample = (
+                self._session.query(_StorageProductSample)
+                .filter(_StorageProductSample.sku_index == sku.index)
+                .order_by(_StorageProductSample.sample_time.desc())
+                .limit(1)
+                .one_or_none()
+            )
 
-            if discard_equal:
-                last_sample = (
-                    self._session.query(_StorageProductSample)
-                    .filter(_StorageProductSample.sku_index == sku.index)
-                    .order_by(_StorageProductSample.sample_time.desc())
-                    .limit(1)
-                    .one_or_none()
+            if last_sample:
+                equal = info.price == last_sample.price
+                logger.debug(
+                    f"last price={last_sample.price}, new price={info.price}, equal={equal}"
                 )
 
-                if last_sample:
-                    equal = price == last_sample.price
-                    logger.debug(
-                        f"last price={last_sample.price}, new price={price}, equal={equal}"
-                    )
+                if equal:
+                    self._session.delete(last_sample)
+            else:
+                logger.debug("no previous sample found")
 
-                    if equal:
-                        self._session.delete(last_sample)
-                else:
-                    logger.debug("no previous sample found")
-
-            new_sample = _StorageProductSample(
-                price=price,
-                in_promo=info.in_promo,
-                raw_payload=info.raw_payload,
-                sku=sku,
-            )
-            self._session.add(new_sample)
+        new_sample = _StorageProductSample(
+            price=info.price,
+            in_promo=info.in_promo,
+            raw_payload=info.raw_payload,
+            sku=sku,
+        )
+        self._session.add(new_sample)
 
     def delete_sample(self, sample: model.ProductInfoSample):
         self._session.delete(sample)
