@@ -49,12 +49,6 @@ def cli(debug: bool):
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
 
 
-def progress_bar_product_name(
-    product: model.Product,
-) -> str:
-    return product.name
-
-
 def validate_category_levels(
     ctx: click.Context, param: click.Parameter, value: str | None
 ) -> str | None:
