@@ -361,9 +361,6 @@ class ProductLedger(Iterable):
         self._sku_codes = sku_codes
         pass
 
-    def __len__(self) -> int:
-        return len(self._sku_codes)
-
     @staticmethod
     def _batches(it: Iterator, batch_max_size: int) -> Generator[list, None, None]:
         batch = []
