@@ -10,8 +10,6 @@ from typing import Callable, Generator, Tuple
 import latest_user_agents
 import requests
 
-from canadiantracker import model
-
 logger = logging.getLogger(__name__)
 
 
@@ -104,6 +102,89 @@ def _random_user_agent() -> str:
     return latest_user_agents.get_random_user_agent()
 
 
+class Product:
+    def __init__(self, code: str, name: str, is_in_clearance: bool, url: str):
+        self._code = code
+        self._name = name
+        self._is_in_clearance = is_in_clearance
+        self._url = url
+
+    @property
+    def code(self) -> str:
+        return self._code
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def is_in_clearance(self) -> bool:
+        return self._is_in_clearance
+
+    @property
+    def url(self) -> str:
+        return self._url
+
+    def __repr__(self):
+        props = {
+            "name": self.name,
+            "code": self.code,
+            "is_in_clearance": self._is_in_clearance,
+        }
+        return str(props)
+
+
+class Sku:
+    def __init__(self, code: str, formatted_code: str):
+        self._code = code
+        self._formatted_code = formatted_code
+
+    @property
+    def code(self) -> str:
+        return self._code
+
+    @property
+    def formatted_code(self) -> str:
+        return self._formatted_code
+
+    def __repr__(self):
+        props = {
+            "code": self.code,
+            "formatted_code": self.formatted_code,
+        }
+        return str(props)
+
+
+class PriceInfo:
+    def __init__(self, result: dict):
+        self._raw_payload = result
+
+    @property
+    def price(self) -> decimal.Decimal | None:
+        current_price = self._raw_payload["currentPrice"]
+        if current_price is None:
+            return None
+
+        value = current_price["value"]
+        assert type(value) in [decimal.Decimal, int]
+        return decimal.Decimal(value)
+
+    @property
+    def code(self) -> str:
+        return self._raw_payload["code"]
+
+    @property
+    def in_promo(self) -> bool:
+        return self._raw_payload["priceValidUntil"] is not None
+
+    @property
+    def raw_payload(self) -> str:
+        return str(self._raw_payload)
+
+    def __repr__(self) -> str:
+        return str(self.__dict__)
+
+
 class ProductInventory(Iterable):
     def __init__(
         self,
@@ -182,7 +263,7 @@ class ProductInventory(Iterable):
             headers=_base_headers,
         )
 
-    def __iter__(self) -> Iterator[model.Product]:
+    def __iter__(self) -> Iterator[Product]:
         num_categories_scraped = 0
 
         for cat, level in self._categories.iter_preorder():
@@ -212,7 +293,7 @@ class ProductInventory(Iterable):
                     url = product["url"]
                     name = product["title"]
                     is_in_clearance = "CLEARANCE" in product["badges"]
-                    yield model.Product(code, name, is_in_clearance, url)
+                    yield Product(code, name, is_in_clearance, url)
 
                 if (
                     self._dev_max_pages_per_category != 0
@@ -238,8 +319,8 @@ class UnknownProductErrorException(RuntimeError):
 
 
 class SkusInventory(Iterable):
-    def __init__(self, product: model.Product):
-        self._product = product
+    def __init__(self, product_code: str):
+        self._product_code = product_code
 
     @staticmethod
     def _request_page(product_code: str) -> requests.Response:
@@ -253,7 +334,7 @@ class SkusInventory(Iterable):
 
     def __iter__(self):
         for ntry in range(5):
-            resp = SkusInventory._request_page(self._product.code)
+            resp = SkusInventory._request_page(self._product_code)
             if resp.status_code == 404:
                 raise NoSuchProductException
             if resp.status_code not in (200, 206):
@@ -268,7 +349,7 @@ class SkusInventory(Iterable):
                 return
 
             for sku in resp["skus"]:
-                yield model.Sku(sku["code"], sku["formattedCode"])
+                yield Sku(sku["code"], sku["formattedCode"])
 
             return
 
@@ -276,12 +357,12 @@ class SkusInventory(Iterable):
 
 
 class ProductLedger(Iterable):
-    def __init__(self, skus: Iterator[model.Sku]):
-        self._skus = skus
+    def __init__(self, sku_codes: Iterator[str]):
+        self._sku_codes = sku_codes
         pass
 
     def __len__(self) -> int:
-        return len(self._skus)
+        return len(self._sku_codes)
 
     @staticmethod
     def _batches(it: Iterator, batch_max_size: int) -> Generator[list, None, None]:
@@ -296,9 +377,9 @@ class ProductLedger(Iterable):
             yield batch
 
     @staticmethod
-    def _get_product_infos(
-        skus: Sequence[model.Sku],
-    ) -> Sequence[model.ProductInfo]:
+    def _get_price_infos(
+        sku_codes: Sequence[str],
+    ) -> Sequence[PriceInfo]:
         for ntry in range(5):
             url = "https://apim.canadiantire.ca/v1/product/api/v1/product/sku/PriceAvailability/?lang=en_CA&storeId=64"
             headers = _base_headers.copy()
@@ -308,14 +389,14 @@ class ProductLedger(Iterable):
             body = {
                 "skus": [
                     {
-                        "code": sku.code,
+                        "code": sku_code,
                         "lowStockThreshold": 0,
                     }
-                    for sku in skus
+                    for sku_code in sku_codes
                 ]
             }
 
-            logger.debug("requested {} product infos".format(len(skus)))
+            logger.debug("requested {} price infos".format(len(sku_codes)))
             response = requests.post(url, headers=headers, json=body)
 
             if response.status_code != 200:
@@ -326,14 +407,14 @@ class ProductLedger(Iterable):
 
             response = response.json(parse_float=decimal.Decimal)
             response_skus = response["skus"]
-            logger.debug("received {} product infos".format(len(response_skus)))
+            logger.debug("received {} price infos".format(len(response_skus)))
 
-            return [model.ProductInfo(product_info) for product_info in response_skus]
+            return [PriceInfo(price_info) for price_info in response_skus]
 
         raise RuntimeError("Failed to get product info")
 
-    def __iter__(self) -> Iterator[model.ProductInfo]:
+    def __iter__(self) -> Iterator[PriceInfo]:
         # The API limits requests to 50 products
-        for batch in self._batches(self._skus, 50):
-            for product_info in self._get_product_infos(batch):
-                yield product_info
+        for batch in self._batches(self._sku_codes, 50):
+            for price_info in self._get_price_infos(batch):
+                yield price_info

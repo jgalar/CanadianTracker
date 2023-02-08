@@ -181,7 +181,7 @@ def scrape_skus(db_path: str, products: str | None):
     ) as products_wrapper:
         for i, product in enumerate(products_wrapper):
             try:
-                for sku in triangle.SkusInventory(product):
+                for sku in triangle.SkusInventory(product.code):
                     repository.add_sku(product, sku.code, sku.formatted_code)
             except triangle.NoSuchProductException:
                 logger.debug(f"Product {product} no longer exists")
@@ -238,7 +238,7 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool):
     with click.progressbar(
         repository.skus, length=repository.skus.count(), **progress_bar_settings
     ) as skus:
-        ledger = triangle.ProductLedger(skus)
+        ledger = triangle.ProductLedger(map(lambda s: s.code, skus))
 
         for info in ledger:
             # Some responses have null as the current price.
