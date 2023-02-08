@@ -53,6 +53,14 @@ class _StorageProduct(_Base):
         self.last_listed = datetime.datetime.now()
         self.url = url
 
+    def __repr__(self):
+        props = {
+            "name": self.name,
+            "code": self.code,
+            "is_in_clearance": self.is_in_clearance,
+        }
+        return str(props)
+
 
 class _StorageSku(_Base):
     # skus table
