@@ -101,7 +101,7 @@ class _StorageProductSample(_Base):
     __tablename__ = "samples"
 
     index: Mapped[int] = mapped_column(primary_key=True, unique=True, index=True)
-    sample_time: Mapped[datetime.date]
+    sample_time: Mapped[datetime.datetime]
     sku_index: Mapped[int] = mapped_column(
         sqlalchemy.ForeignKey("skus.index"),
         index=True,
