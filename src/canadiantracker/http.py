@@ -2,7 +2,7 @@ import json
 import os
 
 import starlette.templating
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -71,12 +71,19 @@ def serialize_sku(sku: storage._StorageSku) -> dict:
 async def api_product(product_code: str) -> dict:
     product = _repository.get_product_by_code(product_code)
 
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
     return {"skus": [serialize_sku(sku) for sku in product.skus]}
 
 
 @app.get("/api/skus/{sku_code}/samples")
 async def api_skus_samples(sku_code: str) -> list[dict]:
     sku = _repository.get_sku_by_code(sku_code)
+
+    if sku is None:
+        raise HTTPException(status_code=404, detail="SKU not found")
+
     return [serialize_product_info_sample(sample) for sample in sku.samples]
 
 
