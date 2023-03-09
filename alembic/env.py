@@ -64,8 +64,12 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    config_section = config.get_section(config.config_ini_section)
+    if config_section is None:
+        raise RuntimeError("could not get config section")
+
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
+        config_section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

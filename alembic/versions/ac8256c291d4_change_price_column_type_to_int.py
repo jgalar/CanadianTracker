@@ -26,9 +26,9 @@ def upgrade() -> None:
 
     with op.batch_alter_table("samples") as batch_op:
         print(">>> Marking price_cents column non-nullable")
-        batch_op.alter_column("price_cents", nullable=False)
+        batch_op.alter_column("price_cents", nullable=False)  # type: ignore
         print(">>> Dropping price column")
-        batch_op.drop_column("price")
+        batch_op.drop_column("price")  # type: ignore
 
 
 def downgrade() -> None:
