@@ -124,6 +124,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("index"),
     )
 
+    if skus_table is None:
+        raise RuntimeError("Something went wrong creating the skus table")
+
     # Create an index on skus.code, we'll want to look up SKUs by code.
     op.create_index(None, "skus", ["code"], unique=True)
 
@@ -139,7 +142,7 @@ def upgrade() -> None:
     print(">>> Dropping products_static.sku column")
     # Drop the `sku` column.
     with op.batch_alter_table("products_static") as batch_op:
-        batch_op.drop_column("sku")
+        batch_op.drop_column("sku")  # type: ignore
 
     # Create a new table for the samples
     print(">>> Creating samples table")
@@ -157,6 +160,8 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("index"),
     )
+    if samples_table is None:
+        raise RuntimeError("Failed to create samples table")
 
     # Go over each sample.
     print(">>> Generating new sample values")
@@ -164,7 +169,13 @@ def upgrade() -> None:
     sample_values = []
     sample_count = db.execute(
         sa.select(sa.func.count(products_dynamic_table.columns.index))
-    ).fetchone()[0]
+    ).fetchone()
+
+    if sample_count is None:
+        raise RuntimeError("Failed to get products_dynamic table count")
+
+    sample_count = sample_count[0]
+
     for index, sample_time, code, price, in_promo, raw_payload in db.execute(
         sa.select(products_dynamic_table)
     ):
@@ -202,6 +213,9 @@ def upgrade() -> None:
                         {"code": sku_code, "product_index": product_index}
                     )
                 )
+
+                if ret.inserted_primary_key is None:
+                    raise RuntimeError("Missing inserted primary key")
 
                 # Maintain our in-memory sku code -> sku index map.
                 sku_index = ret.inserted_primary_key[0]
