@@ -82,7 +82,6 @@ async def api_skus_samples(sku_code: str) -> list[dict]:
 
 @app.get("/", response_class=HTMLResponse)
 async def products(request: Request) -> starlette.templating._TemplateResponse:
-
     return _templates.TemplateResponse("index.html", {"request": request})
 
 
