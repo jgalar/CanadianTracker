@@ -356,6 +356,11 @@ class SkusInventory(Iterable):
         raise UnknownProductErrorException
 
 
+# A non-200 HTTP response when querying prices.
+class _PriceQueryException(Exception):
+    pass
+
+
 class ProductLedger(Iterable):
     def __init__(self, sku_codes: Iterator[str]):
         self._sku_codes = sku_codes
@@ -399,6 +404,11 @@ class ProductLedger(Iterable):
             if response.status_code != 200:
                 # Wait a bit before retrying, in case the admin is restarting the container.
                 logger.error(f"Got status code {response.status_code} on try {ntry}")
+                logger.error(response.text)
+
+                if "Request failed with status code 404" in response.text:
+                    break
+
                 time.sleep(5)
                 continue
 
@@ -408,10 +418,13 @@ class ProductLedger(Iterable):
 
             return [PriceInfo(price_info) for price_info in response_skus]
 
-        raise RuntimeError("Failed to get product info")
+        raise _PriceQueryException("Failed to get product info")
 
     def __iter__(self) -> Iterator[PriceInfo]:
         # The API limits requests to 50 products
         for batch in self._batches(self._sku_codes, 50):
-            for price_info in self._get_price_infos(batch):
-                yield price_info
+            try:
+                for price_info in self._get_price_infos(batch):
+                    yield price_info
+            except _PriceQueryException:
+                pass
