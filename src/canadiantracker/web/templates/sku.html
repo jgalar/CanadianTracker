@@ -12,7 +12,9 @@
     <p>
         Name: {{ sku.product.name }}
         <br>
+        {% if sku_url %}
         <a href="https://canadiantire.ca{{ sku_url }}">{{ sku.formatted_code }}</a>
+        {% endif %}
     </p>
 
     <div id="price-history" style="width:600px;height:250px;"></div>
