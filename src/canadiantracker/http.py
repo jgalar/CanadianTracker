@@ -116,7 +116,9 @@ async def one_sku(
     request: Request, sku_code: str
 ) -> starlette.templating._TemplateResponse:
     sku = _repository.get_sku_by_code(sku_code)
-    assert sku
+    if sku is None:
+        raise HTTPException(status_code=404, detail="SKU not found")
+
     product_url = sku.product.url
     if product_url:
         sku_url = make_sku_url(sku.code, product_url)
