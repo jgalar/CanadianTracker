@@ -10,7 +10,6 @@ import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-
 logger = logging.getLogger(__name__)
 
 
