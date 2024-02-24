@@ -5,7 +5,7 @@ import logging
 import time
 from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
-from typing import Callable, Generator, Tuple
+from typing import Callable, Generator, Optional, Tuple
 
 import latest_user_agents
 import requests
@@ -358,7 +358,13 @@ class SkusInventory(Iterable):
 
 # A non-200 HTTP response when querying prices.
 class _PriceQueryException(Exception):
-    pass
+    def __init__(self, msg: str, request_status_code: Optional[int] = None):
+        super().__init__(msg)
+        self._request_status_code = request_status_code
+
+    @property
+    def request_status_code(self) -> Optional[int]:
+        return self._request_status_code
 
 
 class ProductLedger(Iterable):
@@ -379,9 +385,7 @@ class ProductLedger(Iterable):
             yield batch
 
     @staticmethod
-    def _get_price_infos(
-        sku_codes: Sequence[str],
-    ) -> Sequence[PriceInfo]:
+    def _request_price_infos(sku_codes: Sequence[str]) -> requests.Response:
         for ntry in range(5):
             url = "https://apim.canadiantire.ca/v1/product/api/v1/product/sku/PriceAvailability/?lang=en_CA&storeId=64"
             headers = _base_headers.copy()
@@ -398,27 +402,69 @@ class ProductLedger(Iterable):
                 ]
             }
 
-            logger.debug("requested {} price infos".format(len(sku_codes)))
+            logger.debug(
+                f"Sending batched price info query request: ntry={ntry} batch_size={len(sku_codes)} sku_codes={sku_codes}"
+            )
             response = requests.post(url, headers=headers, json=body)
-
             if response.status_code != 200:
                 # Wait a bit before retrying, in case the admin is restarting the container.
                 logger.error(f"Got status code {response.status_code} on try {ntry}")
                 logger.error(response.text)
 
                 if "Request failed with status code 404" in response.text:
-                    break
+                    raise _PriceQueryException("Failed to get product info", 404)
+                elif response.status_code == 400:
+                    raise _PriceQueryException(
+                        "Failed to get product info", response.status_code
+                    )
 
                 time.sleep(5)
                 continue
 
-            response = response.json(parse_float=decimal.Decimal)
-            response_skus = response["skus"]
-            logger.debug("received {} price infos".format(len(response_skus)))
-
-            return [PriceInfo(price_info) for price_info in response_skus]
+            return response
 
         raise _PriceQueryException("Failed to get product info")
+
+    @staticmethod
+    def _get_price_infos(
+        sku_codes: Sequence[str],
+    ) -> Sequence[PriceInfo]:
+        try:
+            response_skus = ProductLedger._request_price_infos(sku_codes).json(
+                parse_float=decimal.Decimal
+            )["skus"]
+            logger.debug("Received {} price infos".format(len(response_skus)))
+            return [PriceInfo(price_info) for price_info in response_skus]
+
+        except _PriceQueryException as batch_query_exception:
+            logger.warn(
+                f"Price info query failed with status {batch_query_exception.request_status_code}"
+            )
+            if batch_query_exception.request_status_code == 400 and len(sku_codes) > 1:
+                # Some SKUs are retired and probing their price will cause the server
+                # to return an "internal error" if they are part as part of the
+                # requested batch. In those cases, fallback to requesting the prices
+                # one by one.
+                logger.debug(
+                    "Attempting to process failed price info query batch item by item"
+                )
+                price_infos = []
+                for code in sku_codes:
+                    try:
+                        price_infos.append(ProductLedger._get_price_infos([code])[0])
+                    except _PriceQueryException as single_query_exception:
+                        logger.warn(
+                            f"Individual price info query failed with status {batch_query_exception.request_status_code}"
+                        )
+                        if single_query_exception.request_status_code == 400:
+                            logger.debug(f"Skipping price info query for sku '{code}'")
+                            continue
+                        else:
+                            raise single_query_exception
+
+                return price_infos
+            else:
+                raise batch_query_exception
 
     def __iter__(self) -> Iterator[PriceInfo]:
         # The API limits requests to 50 products
