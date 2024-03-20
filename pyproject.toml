@@ -22,7 +22,7 @@ pyright = "^1.1.298"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
 alembic = "^1.7.7"
-black = "^23"
+black = "^24"
 flake8 = "^5.0.4"
 flake8-annotations = "^2.9.1"
 isort = "^5.10.1"
