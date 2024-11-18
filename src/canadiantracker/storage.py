@@ -10,6 +10,7 @@ import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -175,6 +176,12 @@ class Sample:
         self.raw_payload = raw_payload
 
 
+def _set_wal_mode(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL;")
+    cursor.close()
+
+
 class ProductRepository:
     ALEMBIC_REVISION = "ac8256c291d4"
 
@@ -182,6 +189,9 @@ class ProductRepository:
         db_url = "sqlite:///" + os.path.abspath(path)
         logger.debug(f"Creating ProductRepository with url {db_url}")
         self._engine = sqlalchemy.create_engine(db_url, echo=False)
+
+        sqlalchemy.event.listen(self._engine, "connect", _set_wal_mode)
+
         inspector: sqlalchemy.engine.reflection.Inspector = sqlalchemy.inspect(
             self._engine
         )
