@@ -280,7 +280,14 @@ class ProductInventory(Iterable):
                 logger.debug(
                     f"Fetching listing of category {cat.full_name} (page {page}/{num_pages})"
                 )
-                response = ProductInventory._request_page(cat, level, page_number=page)
+                try:
+                    response = ProductInventory._request_page(cat, level, page_number=page)
+                except Exception as e:
+                    logger.warning(
+                        f"Page request failed with exception: {e}"
+                    )
+                    continue
+
                 response = response.json()
 
                 if num_pages is None:
@@ -330,6 +337,7 @@ class SkusInventory(Iterable):
         return requests.get(
             f"https://apim.canadiantire.ca/v1/product/api/v1/product/productFamily/{product_code}?baseStoreId=CTR&lang=en_CA&storeId=64",
             headers=headers,
+            timeout=10
         )
 
     def __iter__(self):
