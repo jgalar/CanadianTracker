@@ -131,9 +131,15 @@ def scrape_products(
 
     with click.progressbar(inventory, **progress_bar_settings) as bar_wrapper:
         for product in bar_wrapper:
-            repository.add_product(
-                product.code, product.name, product.is_in_clearance, product.url
-            )
+            try:
+                repository.add_product(
+                    product.code, product.name, product.is_in_clearance, product.url
+                )
+            except ValueError as e:
+                logging.warning(
+                    f"Failed to add product: code=`{product.code}`, name=`{product.name}`, url=`{product.url}` : {e}"
+                )
+                continue
 
 
 @cli.command(name="scrape-skus", short_help="fetch static product properties")
