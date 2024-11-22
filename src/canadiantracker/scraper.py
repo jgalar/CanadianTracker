@@ -117,11 +117,9 @@ def scrape_products(
     progress_bar_settings = {
         "label": "Scraping inventory",
         "show_pos": True,
-        "item_show_func": lambda p: textwrap.shorten(
-            p.name, width=32, placeholder="..."
-        )
-        if p
-        else None,
+        "item_show_func": lambda p: (
+            textwrap.shorten(p.name, width=32, placeholder="...") if p else None
+        ),
     }
 
     if logging.root.level == logging.DEBUG:
@@ -169,11 +167,9 @@ def scrape_skus(db_path: str, products: str | None):
     progress_bar_settings = {
         "label": "Scraping SKUs",
         "show_pos": True,
-        "item_show_func": lambda p: textwrap.shorten(
-            p.code, width=32, placeholder="..."
-        )
-        if p
-        else None,
+        "item_show_func": lambda p: (
+            textwrap.shorten(p.code, width=32, placeholder="...") if p else None
+        ),
         "length": repository.products().count(),
     }
 
@@ -229,11 +225,9 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool):
     progress_bar_settings = {
         "label": "Scraping prices",
         "show_pos": True,
-        "item_show_func": lambda p: textwrap.shorten(
-            p.code, width=32, placeholder="..."
-        )
-        if p
-        else None,
+        "item_show_func": lambda p: (
+            textwrap.shorten(p.code, width=32, placeholder="...") if p else None
+        ),
     }
 
     if logging.root.level == logging.DEBUG:
