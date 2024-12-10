@@ -413,7 +413,14 @@ class ProductLedger(Iterable):
             logger.debug(
                 f"Sending batched price info query request: ntry={ntry} batch_size={len(sku_codes)} sku_codes={sku_codes}"
             )
-            response = requests.post(url, headers=headers, json=body)
+            try:
+                response = requests.post(url, headers=headers, json=body, timeout=10)
+            except Exception as e:
+                logger.warning(
+                    f"Batched price info query request failed with exception: ntry={ntry} batch_size={len(sku_codes)} sku_codes={sku_codes}, exception={e}"
+                )
+                continue
+
             if response.status_code != 200:
                 # Wait a bit before retrying, in case the admin is restarting the container.
                 logger.error(f"Got status code {response.status_code} on try {ntry}")
