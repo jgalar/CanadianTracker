@@ -181,7 +181,7 @@ def scrape_skus(db_path: str, products: str | None):
     with click.progressbar(
         repository.products(codes=products_list), **progress_bar_settings
     ) as products_wrapper:
-        for i, product in enumerate(products_wrapper):
+        for product in products_wrapper:
             try:
                 for sku in triangle.SkusInventory(product.code):
                     repository.add_sku(product, sku.code, sku.formatted_code)
