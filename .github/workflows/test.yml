@@ -25,8 +25,8 @@ jobs:
         run: poetry run flake8 .
       - name: isort
         run: poetry run isort --check .
-      - name: pyright
-        run: poetry run pyright
+      - name: basedpyright
+        run: poetry run basedpyright .
       - name: Run help
         run: poetry run ctscraper --help
       - name: Run tests
