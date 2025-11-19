@@ -67,18 +67,19 @@ def price_history(db_path: str, format: str, sku_code: str):
 def plot_history(sku: storage._StorageSku):
     import plotext as plt
 
-    plt.datetime.set_datetime_form(date_form="%d/%m/%Y")
+    plt.datetime.set_datetime_form(date_form="%d/%m/%Y")  # type: ignore[attr-defined]
 
     prices = [float(sample.price) for sample in sku.samples]
     dates = [
-        plt.datetime.datetime_to_string(sample.sample_time) for sample in sku.samples
+        plt.datetime.datetime_to_string(sample.sample_time)  # type: ignore[attr-defined]
+        for sample in sku.samples
     ]
 
     prices = []
     dates = []
 
     for index, sample in enumerate(sku.samples):
-        formatted_date = plt.datetime.datetime_to_string(sample.sample_time)
+        formatted_date = plt.datetime.datetime_to_string(sample.sample_time)  # type: ignore[attr-defined]
         price = float(
             sample.price.quantize(
                 decimal.Decimal(".01"), rounding=decimal.ROUND_HALF_EVEN
@@ -102,7 +103,7 @@ def plot_history(sku: storage._StorageSku):
     plt.canvas_color("black")
     plt.ticks_color("red")
     plt.axes_color("black")
-    plt.plot_date(dates, prices, color="white")
+    plt.plot_date(dates, prices, color="white")  # type: ignore[attr-defined]
 
     plt.title("Price history for {}".format(sku.product.name))
     plt.xlabel("Date")

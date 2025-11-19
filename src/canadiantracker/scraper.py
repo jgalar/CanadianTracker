@@ -274,8 +274,6 @@ def prune_samples(db_path: str):
     signal.signal(signal.SIGINT, handle_sigint)
 
     def show_item(item: storage._StorageProductSample | None) -> str:
-        nonlocal n_deleted
-
         return f"Deleted: {n_deleted}"
 
     with click.progressbar(

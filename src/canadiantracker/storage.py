@@ -5,10 +5,15 @@ import decimal
 import logging
 import os
 import re
+import sqlite3
+from typing import TYPE_CHECKING
 
 import sqlalchemy
-from sqlalchemy import orm
+from sqlalchemy import event, orm
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+if TYPE_CHECKING:
+    from sqlalchemy.pool.base import _ConnectionRecord
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +180,9 @@ class Sample:
         self.raw_payload = raw_payload
 
 
-def _set_wal_mode(dbapi_connection, connection_record):
+def _set_wal_mode(
+    dbapi_connection: sqlite3.Connection, connection_record: _ConnectionRecord
+):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA journal_mode=WAL;")
     cursor.close()
@@ -189,7 +196,7 @@ class ProductRepository:
         logger.debug(f"Creating ProductRepository with url {db_url}")
         self._engine = sqlalchemy.create_engine(db_url, echo=False)
 
-        sqlalchemy.event.listen(self._engine, "connect", _set_wal_mode)
+        event.listen(self._engine, "connect", _set_wal_mode)
 
         inspector: sqlalchemy.engine.reflection.Inspector = sqlalchemy.inspect(
             self._engine
@@ -207,7 +214,7 @@ class ProductRepository:
             raise InvalidDatabaseRevisionException("table alembic_revision is empty")
 
         rev = revs[0].version_num
-        if rev != self.ALEMBIC_REVISION:
+        if rev != self.ALEMBIC_REVISION:  # type: ignore[comparison-overlap]
             raise InvalidDatabaseRevisionException(
                 f"expected {self.ALEMBIC_REVISION}, got {rev}"
             )
