@@ -7,8 +7,7 @@ from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
 from typing import Callable, Generator, Optional, Tuple
 
-import latest_user_agents
-import requests
+from curl_cffi import requests
 
 logger = logging.getLogger(__name__)
 
@@ -74,32 +73,17 @@ class _ProductCategories:
 
 
 _base_headers = {
-    "authority": "apim.canadiantire.ca",
     "accept": "application/json, text/plain, */*",
-    "accept-language": "en-US,en;q=0.9",
     "bannerid": "CTR",
     "basesiteid": "CTR",
+    "browse-mode": "OFF",
+    "dnt": "1",
     "ocp-apim-subscription-key": "c01ef3612328420c9f5cd9277e815a0e",
-    "origin": "https://www.canadiantire.ca",
     "referer": "https://www.canadiantire.ca/",
-    "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="102", "Google Chrome";v="102"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"Windows"',
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-site",
     "service-client": "ctr/web",
-    "service-version": "ctc-dev2",
-    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36",
+    "service-version": "v1",
     "x-web-host": "www.canadiantire.ca",
-    "cache-control": "no-cache",
-    "pragma": "no-cache",
 }
-
-
-@staticmethod
-def _random_user_agent() -> str:
-    return latest_user_agents.get_random_user_agent()
 
 
 class Product:
@@ -233,6 +217,7 @@ class ProductInventory(Iterable):
             "https://apim.canadiantire.ca/v1/category/api/v1/categories",
             headers=_base_headers,
             params={"lang": "en_CA"},
+            impersonate="chrome136",
         )
 
         if response.status_code != 200:
@@ -261,6 +246,7 @@ class ProductInventory(Iterable):
         return requests.get(
             f"https://apim.canadiantire.ca/v1/search/search?store=64&lang=en_CA&x1=ast-id-level-{cat_level}&q1={cat.id}&experience=category;count=48;page={page_number}",
             headers=_base_headers,
+            impersonate="chrome136",
         )
 
     def __iter__(self) -> Iterator[Product]:
@@ -333,11 +319,11 @@ class SkusInventory(Iterable):
     def _request_page(product_code: str) -> requests.Response:
         """Fetch one product page."""
         headers = _base_headers.copy()
-        headers["user-agent"] = _random_user_agent()
         return requests.get(
             f"https://apim.canadiantire.ca/v1/product/api/v1/product/productFamily/{product_code}?baseStoreId=CTR&lang=en_CA&storeId=64",
             headers=headers,
             timeout=10,
+            impersonate="chrome136",
         )
 
     def __iter__(self):
@@ -397,7 +383,6 @@ class ProductLedger(Iterable):
         for ntry in range(5):
             url = "https://apim.canadiantire.ca/v1/product/api/v1/product/sku/PriceAvailability/?lang=en_CA&storeId=64"
             headers = _base_headers.copy()
-            headers["user-agent"] = _random_user_agent()
             headers["content-type"] = "application/json"
 
             body = {
@@ -414,7 +399,7 @@ class ProductLedger(Iterable):
                 f"Sending batched price info query request: ntry={ntry} batch_size={len(sku_codes)} sku_codes={sku_codes}"
             )
             try:
-                response = requests.post(url, headers=headers, json=body, timeout=10)
+                response = requests.post(url, headers=headers, json=body, timeout=10, impersonate="chrome136")
             except Exception as e:
                 logger.warning(
                     f"Batched price info query request failed with exception: ntry={ntry} batch_size={len(sku_codes)} sku_codes={sku_codes}, exception={e}"

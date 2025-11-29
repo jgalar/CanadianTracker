@@ -17,6 +17,7 @@ python-dotenv = "^1.2.1"
 Jinja2 = "^3.1.6"
 traceback-with-variables = "^2.2.1"
 latest-user-agents = "^0.0.5"
+curl-cffi = "^0.13.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.1"
