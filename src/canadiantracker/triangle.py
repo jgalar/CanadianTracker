@@ -399,7 +399,9 @@ class ProductLedger(Iterable):
                 f"Sending batched price info query request: ntry={ntry} batch_size={len(sku_codes)} sku_codes={sku_codes}"
             )
             try:
-                response = requests.post(url, headers=headers, json=body, timeout=10, impersonate="chrome136")
+                response = requests.post(
+                    url, headers=headers, json=body, timeout=10, impersonate="chrome136"
+                )
             except Exception as e:
                 logger.warning(
                     f"Batched price info query request failed with exception: ntry={ntry} batch_size={len(sku_codes)} sku_codes={sku_codes}, exception={e}"
