@@ -1,22 +1,38 @@
+import datetime
 import json
 import os
+from pathlib import Path
 
 import starlette.templating
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from canadiantracker import storage
 
 app = FastAPI()
-app.mount(
-    "/static",
-    StaticFiles(directory=os.path.dirname(__file__) + "/web/dist"),
-    name="static",
-)
 
-_templates = Jinja2Templates(directory=os.path.dirname(__file__) + "/web/templates")
+# Determine which frontend to use
+_use_svelte = os.environ.get("CTSERVER_USE_SVELTE", "0") == "1"
+_base_dir = Path(__file__).parent
+
+if _use_svelte:
+    # Serve Svelte SPA assets
+    app.mount(
+        "/assets",
+        StaticFiles(directory=_base_dir / "web-svelte" / "dist" / "assets"),
+        name="assets",
+    )
+else:
+    # Serve legacy jQuery frontend
+    app.mount(
+        "/static",
+        StaticFiles(directory=_base_dir / "web" / "dist"),
+        name="static",
+    )
+
+_templates = Jinja2Templates(directory=_base_dir / "web" / "templates")
 _repository: storage.ProductRepository | None = None
 
 
@@ -74,6 +90,115 @@ def serialize_sku(sku: storage._StorageSku) -> dict:
     return {"code": sku.code, "formatted_code": sku.formatted_code}
 
 
+def compute_sku_stats_light(sku: storage._StorageSku) -> dict:
+    """Compute price statistics for a SKU (with last 3 months of samples for sparklines)."""
+    samples = list(sku.samples)
+    if not samples:
+        return {
+            "current": 0,
+            "all_time_low": 0,
+            "all_time_high": 0,
+            "samples": [],
+        }
+
+    prices_cents = [int(s.price * 100) for s in samples]
+
+    # Only include samples from the last 3 months for the sparkline
+    three_months_ago = datetime.datetime.now() - datetime.timedelta(days=90)
+    recent_samples = [s for s in samples if s.sample_time >= three_months_ago]
+
+    sample_data = [
+        {"time": int(s.sample_time.timestamp()), "price": int(s.price * 100)}
+        for s in recent_samples
+    ]
+
+    return {
+        "current": prices_cents[-1],
+        "all_time_low": min(prices_cents),
+        "all_time_high": max(prices_cents),
+        "samples": sample_data,
+    }
+
+
+@app.get("/api/search")
+async def api_search(q: str = "") -> list[dict]:
+    """Search products/SKUs by name, code, or SKU."""
+    max_search_results = 500
+
+    query = q.strip()
+    if not query:
+        return []
+
+    repo = _get_repository()
+    search_pattern = f"%{query}%"
+
+    products = (
+        repo.products()
+        .filter(
+            storage._StorageProduct.name.ilike(search_pattern)
+            | storage._StorageProduct.code.ilike(search_pattern)
+        )
+        .limit(max_search_results)
+        .all()
+    )
+
+    results = []
+    for product in products:
+        for sku in product.skus:
+            stats = compute_sku_stats_light(sku)
+            if stats["current"] == 0:
+                continue
+            results.append(
+                {
+                    "product_name": product.name,
+                    "product_code": product.code,
+                    "sku_code": sku.code,
+                    "sku_formatted_code": sku.formatted_code,
+                    "stats": stats,
+                }
+            )
+            if len(results) >= max_search_results:
+                break
+        if len(results) >= max_search_results:
+            break
+
+    # If we haven't found enough, also search by SKU code
+    if len(results) < max_search_results:
+        skus = (
+            repo.skus.filter(
+                storage._StorageSku.code.ilike(search_pattern)
+                | storage._StorageSku.formatted_code.ilike(search_pattern)
+            )
+            .limit(max_search_results - len(results))
+            .all()
+        )
+
+        seen_sku_codes = {r["sku_code"] for r in results}
+        for sku in skus:
+            if sku.code in seen_sku_codes:
+                continue
+            stats = compute_sku_stats_light(sku)
+            if stats["current"] == 0:
+                continue
+            results.append(
+                {
+                    "product_name": sku.product.name,
+                    "product_code": sku.product.code,
+                    "sku_code": sku.code,
+                    "sku_formatted_code": sku.formatted_code,
+                    "stats": stats,
+                }
+            )
+
+    return results
+
+
+@app.get("/api/deals")
+async def api_deals(limit: int = 20) -> list[dict]:
+    """Get best deals - items currently at or near their all-time low."""
+    return []
+
+
 @app.get("/api/products/{product_code}")
 async def api_product(product_code: str) -> dict:
     product = _get_repository().get_product_by_code(product_code)
@@ -82,6 +207,22 @@ async def api_product(product_code: str) -> dict:
         raise HTTPException(status_code=404, detail="Product not found")
 
     return {"skus": [serialize_sku(sku) for sku in product.skus]}
+
+
+@app.get("/api/skus/{sku_code}")
+async def api_sku(sku_code: str) -> dict:
+    """Get SKU details including product name."""
+    sku = _get_repository().get_sku_by_code(sku_code)
+
+    if sku is None:
+        raise HTTPException(status_code=404, detail="SKU not found")
+
+    return {
+        "code": sku.code,
+        "formatted_code": sku.formatted_code,
+        "product_name": sku.product.name,
+        "product_code": sku.product.code,
+    }
 
 
 @app.get("/api/skus/{sku_code}/samples")
@@ -94,19 +235,9 @@ async def api_skus_samples(sku_code: str) -> list[dict]:
     return [serialize_product_info_sample(sample) for sample in sku.samples]
 
 
-@app.get("/", response_class=HTMLResponse)
-async def products(request: Request) -> starlette.templating._TemplateResponse:
-    return _templates.TemplateResponse("index.html", {"request": request})
-
-
-@app.get("/products/{product_code}", response_class=HTMLResponse)
-async def one_product(
-    request: Request, product_code: str
-) -> starlette.templating._TemplateResponse:
-    product = _get_repository().get_product_by_code(product_code)
-    return _templates.TemplateResponse(
-        "product.html", {"request": request, "product": product}
-    )
+def _serve_svelte_index() -> FileResponse:
+    """Serve the Svelte SPA index.html."""
+    return FileResponse(_base_dir / "web-svelte" / "dist" / "index.html")
 
 
 def make_sku_url(sku_code: str, product_url: str) -> str | None:
@@ -118,10 +249,27 @@ def make_sku_url(sku_code: str, product_url: str) -> str | None:
     return product_url[0:-4] + sku_code + ".html"
 
 
-@app.get("/skus/{sku_code}", response_class=HTMLResponse)
-async def one_sku(
-    request: Request, sku_code: str
-) -> starlette.templating._TemplateResponse:
+@app.get("/", response_class=HTMLResponse, response_model=None)
+async def index(request: Request):
+    if _use_svelte:
+        return _serve_svelte_index()
+    return _templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/products/{product_code}", response_class=HTMLResponse, response_model=None)
+async def one_product(request: Request, product_code: str):
+    if _use_svelte:
+        return _serve_svelte_index()
+    product = _get_repository().get_product_by_code(product_code)
+    return _templates.TemplateResponse(
+        "product.html", {"request": request, "product": product}
+    )
+
+
+@app.get("/skus/{sku_code}", response_class=HTMLResponse, response_model=None)
+async def one_sku(request: Request, sku_code: str):
+    if _use_svelte:
+        return _serve_svelte_index()
     sku = _get_repository().get_sku_by_code(sku_code)
     if sku is None:
         raise HTTPException(status_code=404, detail="SKU not found")
