@@ -6,16 +6,26 @@ import logging
 import os
 import re
 import sqlite3
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import sqlalchemy
-from sqlalchemy import event, orm
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import event, func, orm
+from sqlalchemy.orm import Mapped, mapped_column, object_session, relationship
 
 if TYPE_CHECKING:
     from sqlalchemy.pool.base import _ConnectionRecord
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SkuPriceStats:
+    """Price statistics for a SKU, all values in cents."""
+
+    current: int
+    all_time_low: int
+    all_time_high: int
 
 
 class _Base(orm.DeclarativeBase):
@@ -103,6 +113,54 @@ class _StorageSku(_Base):
                 ]
             )
             + ")"
+        )
+
+    def get_recent_samples(
+        self, days: int = 90
+    ) -> orm.Query[_StorageProductSample]:
+        """Get samples from the last N days for this SKU."""
+        session = object_session(self)
+        cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
+        return (
+            session.query(_StorageProductSample)
+            .filter(
+                _StorageProductSample.sku_index == self.index,
+                _StorageProductSample.sample_time >= cutoff,
+            )
+            .order_by(_StorageProductSample.sample_time)
+        )
+
+    def get_price_stats(self) -> SkuPriceStats | None:
+        """Get price statistics (current, all-time low, all-time high) in cents.
+
+        Returns None if no samples exist.
+        """
+        session = object_session(self)
+        result = (
+            session.query(
+                func.min(_StorageProductSample.price_cents),
+                func.max(_StorageProductSample.price_cents),
+            )
+            .filter(_StorageProductSample.sku_index == self.index)
+            .one()
+        )
+
+        if result[0] is None:
+            return None
+
+        # Get the most recent price
+        latest = (
+            session.query(_StorageProductSample.price_cents)
+            .filter(_StorageProductSample.sku_index == self.index)
+            .order_by(_StorageProductSample.sample_time.desc())
+            .limit(1)
+            .scalar()
+        )
+
+        return SkuPriceStats(
+            current=latest,
+            all_time_low=result[0],
+            all_time_high=result[1],
         )
 
 

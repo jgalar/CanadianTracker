@@ -1,4 +1,3 @@
-import datetime
 import json
 import os
 from pathlib import Path
@@ -92,8 +91,8 @@ def serialize_sku(sku: storage._StorageSku) -> dict:
 
 def compute_sku_stats_light(sku: storage._StorageSku) -> dict:
     """Compute price statistics for a SKU (with last 3 months of samples for sparklines)."""
-    samples = list(sku.samples)
-    if not samples:
+    price_stats = sku.get_price_stats()
+    if price_stats is None:
         return {
             "current": 0,
             "all_time_low": 0,
@@ -101,21 +100,18 @@ def compute_sku_stats_light(sku: storage._StorageSku) -> dict:
             "samples": [],
         }
 
-    prices_cents = [int(s.price * 100) for s in samples]
-
-    # Only include samples from the last 3 months for the sparkline
-    three_months_ago = datetime.datetime.now() - datetime.timedelta(days=90)
-    recent_samples = [s for s in samples if s.sample_time >= three_months_ago]
+    # Query only recent samples (last 3 months) for the sparkline
+    recent_samples = sku.get_recent_samples(days=90).all()
 
     sample_data = [
-        {"time": int(s.sample_time.timestamp()), "price": int(s.price * 100)}
+        {"time": int(s.sample_time.timestamp()), "price": s.price_cents}
         for s in recent_samples
     ]
 
     return {
-        "current": prices_cents[-1],
-        "all_time_low": min(prices_cents),
-        "all_time_high": max(prices_cents),
+        "current": price_stats.current,
+        "all_time_low": price_stats.all_time_low,
+        "all_time_high": price_stats.all_time_high,
         "samples": sample_data,
     }
 
