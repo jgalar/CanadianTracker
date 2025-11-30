@@ -7,9 +7,34 @@ from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
 from typing import Callable, Generator, Optional, Tuple
 
-from curl_cffi import requests
+import asyncio
+
+from curl_cffi.requests import AsyncSession, Response
 
 logger = logging.getLogger(__name__)
+
+
+def _run_async(coro):
+    """
+    Run an async coroutine synchronously.
+
+    Uses asyncio.run() which properly handles SIGINT (Ctrl-C), unlike
+    curl_cffi's synchronous API which blocks in C code and defers signal
+    handling until the request completes.
+    """
+    return asyncio.run(coro)
+
+
+async def _async_get(url: str, **kwargs) -> Response:
+    """Async GET request wrapper."""
+    async with AsyncSession() as session:
+        return await session.get(url, **kwargs)
+
+
+async def _async_post(url: str, **kwargs) -> Response:
+    """Async POST request wrapper."""
+    async with AsyncSession() as session:
+        return await session.post(url, **kwargs)
 
 
 class _ProductCategory:
@@ -225,11 +250,13 @@ class ProductInventory(Iterable):
 
     def _fetch_categories(self) -> _ProductCategories:
         """Fetch the list of categories, create some objects out of it."""
-        response = requests.get(
-            "https://apim.canadiantire.ca/v1/category/api/v1/categories",
-            headers=_base_headers,
-            params={"lang": "en_CA"},
-            impersonate="chrome136",
+        response = _run_async(
+            _async_get(
+                "https://apim.canadiantire.ca/v1/category/api/v1/categories",
+                headers=_base_headers,
+                params={"lang": "en_CA"},
+                impersonate="chrome136",
+            )
         )
 
         if response.status_code != 200:
@@ -253,12 +280,14 @@ class ProductInventory(Iterable):
     @staticmethod
     def _request_page(
         cat: _ProductCategory, cat_level: int, page_number: int = 1
-    ) -> requests.Response:
+    ) -> Response:
         """Fetch one page of products."""
-        return requests.get(
-            f"https://apim.canadiantire.ca/v1/search/search?store=64&lang=en_CA&x1=ast-id-level-{cat_level}&q1={cat.id}&experience=category;count=48;page={page_number}",
-            headers=_base_headers,
-            impersonate="chrome136",
+        return _run_async(
+            _async_get(
+                f"https://apim.canadiantire.ca/v1/search/search?store=64&lang=en_CA&x1=ast-id-level-{cat_level}&q1={cat.id}&experience=category;count=48;page={page_number}",
+                headers=_base_headers,
+                impersonate="chrome136",
+            )
         )
 
     def __iter__(self) -> Iterator[Product]:
@@ -334,14 +363,16 @@ class SkusInventory(Iterable):
         self._product_code = product_code
 
     @staticmethod
-    def _request_page(product_code: str) -> requests.Response:
+    def _request_page(product_code: str) -> Response:
         """Fetch one product page."""
         headers = _base_headers.copy()
-        return requests.get(
-            f"https://apim.canadiantire.ca/v1/product/api/v1/product/productFamily/{product_code}?baseStoreId=CTR&lang=en_CA&storeId=64",
-            headers=headers,
-            timeout=10,
-            impersonate="chrome136",
+        return _run_async(
+            _async_get(
+                f"https://apim.canadiantire.ca/v1/product/api/v1/product/productFamily/{product_code}?baseStoreId=CTR&lang=en_CA&storeId=64",
+                headers=headers,
+                timeout=10,
+                impersonate="chrome136",
+            )
         )
 
     def __iter__(self):
@@ -399,7 +430,7 @@ class PriceFetcher(Iterable):
             yield batch
 
     @staticmethod
-    def _request_price_infos(sku_codes: Sequence[str]) -> requests.Response:
+    def _request_price_infos(sku_codes: Sequence[str]) -> Response:
         for ntry in range(5):
             url = "https://apim.canadiantire.ca/v1/product/api/v1/product/sku/PriceAvailability/?lang=en_CA&storeId=64"
             headers = _base_headers.copy()
@@ -419,8 +450,14 @@ class PriceFetcher(Iterable):
                 f"Sending batched price info query request: ntry={ntry} batch_size={len(sku_codes)} sku_codes={sku_codes}"
             )
             try:
-                response = requests.post(
-                    url, headers=headers, json=body, timeout=10, impersonate="chrome136"
+                response = _run_async(
+                    _async_post(
+                        url,
+                        headers=headers,
+                        json=body,
+                        timeout=10,
+                        impersonate="chrome136",
+                    )
                 )
             except Exception as e:
                 logger.warning(
