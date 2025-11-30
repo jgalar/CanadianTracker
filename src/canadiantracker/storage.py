@@ -117,9 +117,7 @@ class _StorageSku(_Base):
             + ")"
         )
 
-    def get_recent_samples(
-        self, days: int = 90
-    ) -> orm.Query[_StorageProductSample]:
+    def get_recent_samples(self, days: int = 90) -> orm.Query[_StorageProductSample]:
         """Get samples from the last N days for this SKU."""
         session = object_session(self)
         cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
@@ -217,6 +215,7 @@ class _StorageProductSample(_Base):
 
 class InvalidDatabaseRevisionException(Exception):
     """Raised when the database schema version doesn't match the expected revision."""
+
     def __init__(self, msg: str):
         self._msg = msg
 
