@@ -481,8 +481,8 @@ class PriceFetcher(Iterable):
                                 f"No price info returned for sku '{code}', skipping"
                             )
                     except _PriceQueryException as single_query_exception:
-                        logger.warn(
-                            f"Individual price info query failed with status {batch_query_exception.request_status_code}"
+                        logger.warning(
+                            f"Individual price info query failed with status {single_query_exception.request_status_code}"
                         )
                         if single_query_exception.request_status_code == 400:
                             logger.debug(f"Skipping price info query for sku '{code}'")
