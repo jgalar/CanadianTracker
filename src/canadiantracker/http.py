@@ -119,7 +119,7 @@ def compute_sku_stats_light(sku: storage._StorageSku) -> dict:
 @app.get("/api/search")
 async def api_search(q: str = "") -> list[dict]:
     """Search products/SKUs by name, code, or SKU."""
-    max_search_results = 500
+    max_search_results = 100
 
     query = q.strip()
     if not query:
