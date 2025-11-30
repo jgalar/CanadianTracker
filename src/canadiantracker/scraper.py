@@ -263,13 +263,13 @@ def prune_samples(db_path: str):
         db_path
     )
     n_deleted = 0
-    quit = False
+    should_quit = False
 
     # Handle ctrl-C gracefully to avoid aborting (and rolling back) the changes
     # we have so far.
     def handle_sigint(signo: int, frame: FrameType | None):
-        nonlocal quit
-        quit = True
+        nonlocal should_quit
+        should_quit = True
 
     signal.signal(signal.SIGINT, handle_sigint)
 
@@ -318,7 +318,7 @@ def prune_samples(db_path: str):
                 is_interval_start = last_sample.price != sample.price
                 last_samples[sample.sku_index] = (sample, is_interval_start)
 
-            if quit:
+            if should_quit:
                 repository.flush()
                 raise KeyboardInterrupt
 
