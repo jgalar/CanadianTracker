@@ -16,9 +16,16 @@ app.mount(
     name="static",
 )
 
-_db_path = os.environ["CTSERVER_SERVE_DB_PATH"]
 _templates = Jinja2Templates(directory=os.path.dirname(__file__) + "/web/templates")
-_repository = storage.get_product_repository_from_sqlite_file(_db_path)
+_repository: storage.ProductRepository | None = None
+
+
+def _get_repository() -> storage.ProductRepository:
+    global _repository
+    if _repository is None:
+        db_path = os.environ["CTSERVER_SERVE_DB_PATH"]
+        _repository = storage.get_product_repository_from_sqlite_file(db_path)
+    return _repository
 
 
 # This request takes a few seconds to execute, causing some delay when
@@ -34,7 +41,7 @@ async def api_products() -> Response:
     if cached_products_response is None:
         products = []
 
-        for p in _repository.products():
+        for p in _get_repository().products():
             products.append(
                 {
                     "name": p.name,
@@ -69,7 +76,7 @@ def serialize_sku(sku: storage._StorageSku) -> dict:
 
 @app.get("/api/products/{product_code}")
 async def api_product(product_code: str) -> dict:
-    product = _repository.get_product_by_code(product_code)
+    product = _get_repository().get_product_by_code(product_code)
 
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -79,7 +86,7 @@ async def api_product(product_code: str) -> dict:
 
 @app.get("/api/skus/{sku_code}/samples")
 async def api_skus_samples(sku_code: str) -> list[dict]:
-    sku = _repository.get_sku_by_code(sku_code)
+    sku = _get_repository().get_sku_by_code(sku_code)
 
     if sku is None:
         raise HTTPException(status_code=404, detail="SKU not found")
@@ -96,7 +103,7 @@ async def products(request: Request) -> starlette.templating._TemplateResponse:
 async def one_product(
     request: Request, product_code: str
 ) -> starlette.templating._TemplateResponse:
-    product = _repository.get_product_by_code(product_code)
+    product = _get_repository().get_product_by_code(product_code)
     return _templates.TemplateResponse(
         "product.html", {"request": request, "product": product}
     )
@@ -115,7 +122,7 @@ def make_sku_url(sku_code: str, product_url: str) -> str | None:
 async def one_sku(
     request: Request, sku_code: str
 ) -> starlette.templating._TemplateResponse:
-    sku = _repository.get_sku_by_code(sku_code)
+    sku = _get_repository().get_sku_by_code(sku_code)
     if sku is None:
         raise HTTPException(status_code=404, detail="SKU not found")
 
