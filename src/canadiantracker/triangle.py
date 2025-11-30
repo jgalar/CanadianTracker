@@ -459,7 +459,7 @@ class PriceFetcher(Iterable):
             return [PriceInfo(price_info) for price_info in response_skus]
 
         except _PriceQueryException as batch_query_exception:
-            logger.warn(
+            logger.warning(
                 f"Price info query failed with status {batch_query_exception.request_status_code}"
             )
             if batch_query_exception.request_status_code == 400 and len(sku_codes) > 1:
