@@ -455,7 +455,7 @@ class PriceFetcher(Iterable):
             response_skus = PriceFetcher._request_price_infos(sku_codes).json(
                 parse_float=decimal.Decimal
             )["skus"]
-            logger.debug("Received {} price infos".format(len(response_skus)))
+            logger.debug(f"Received {len(response_skus)} price infos")
             return [PriceInfo(price_info) for price_info in response_skus]
 
         except _PriceQueryException as batch_query_exception:
