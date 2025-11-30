@@ -453,7 +453,11 @@ class ProductLedger(Iterable):
                 price_infos = []
                 for code in sku_codes:
                     try:
-                        price_infos.append(ProductLedger._get_price_infos([code])[0])
+                        single_result = ProductLedger._get_price_infos([code])
+                        if single_result:
+                            price_infos.append(single_result[0])
+                        else:
+                            logger.debug(f"No price info returned for sku '{code}', skipping")
                     except _PriceQueryException as single_query_exception:
                         logger.warn(
                             f"Individual price info query failed with status {batch_query_exception.request_status_code}"
