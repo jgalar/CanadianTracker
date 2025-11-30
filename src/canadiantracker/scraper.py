@@ -238,9 +238,9 @@ def scrape_prices(db_path: str, older_than: int, discard_equal: bool):
     with click.progressbar(
         repository.skus, length=repository.skus.count(), **progress_bar_settings
     ) as skus:
-        ledger = triangle.ProductLedger(map(lambda s: s.code, skus))
+        price_fetcher = triangle.PriceFetcher(map(lambda s: s.code, skus))
 
-        for info in ledger:
+        for info in price_fetcher:
             # Some responses have null as the current price.
             if info.price is None:
                 continue

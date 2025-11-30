@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SkuPriceStats:
-    """Price statistics for a SKU, all values in cents."""
+    """Price statistics for a SKU (current, all-time low/high), all values in cents."""
 
     current: int
     all_time_low: int
@@ -47,7 +47,8 @@ class _AlembicRevision(_Base):
 
 
 class _StorageProduct(_Base):
-    # static product properties
+    """A product listed in the store's inventory."""
+
     __tablename__ = "products_static"
 
     index: Mapped[int] = mapped_column(primary_key=True, unique=True, index=True)
@@ -78,7 +79,8 @@ class _StorageProduct(_Base):
 
 
 class _StorageSku(_Base):
-    # skus table
+    """A SKU belonging to a product."""
+
     __tablename__ = "skus"
 
     index: Mapped[int] = mapped_column(primary_key=True)
@@ -165,7 +167,8 @@ class _StorageSku(_Base):
 
 
 class _StorageProductSample(_Base):
-    # sample of dynamic product properties
+    """A price sample for a SKU at a point in time."""
+
     __tablename__ = "samples"
 
     index: Mapped[int] = mapped_column(primary_key=True, unique=True, index=True)
@@ -213,6 +216,7 @@ class _StorageProductSample(_Base):
 
 
 class InvalidDatabaseRevisionException(Exception):
+    """Raised when the database schema version doesn't match the expected revision."""
     def __init__(self, msg: str):
         self._msg = msg
 
@@ -228,16 +232,6 @@ def _validate_product_code_format(product_code: str):
         raise ValueError(f"Wrong format for product code: {product_code}")
 
 
-class Sample:
-    def __init__(
-        self, sku_code: str, price: decimal.Decimal, in_promo: bool, raw_payload: str
-    ):
-        self.sku_code = sku_code
-        self.price = price
-        self.in_promo = in_promo
-        self.raw_payload = raw_payload
-
-
 def _set_wal_mode(
     dbapi_connection: sqlite3.Connection, connection_record: _ConnectionRecord
 ):
@@ -247,6 +241,8 @@ def _set_wal_mode(
 
 
 class ProductRepository:
+    """Repository for persisting and querying products, SKUs, and price samples."""
+
     ALEMBIC_REVISION = "ac8256c291d4"
 
     def __init__(self, path: str):

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class _ProductCategory:
+    """A category in the store's product hierarchy."""
     def __init__(self, id: str, name: str, subcategories: list[_ProductCategory]):
         self._id = id
         self._name = name
@@ -55,6 +56,7 @@ class _ProductCategory:
 
 
 class _ProductCategories:
+    """Collection of product categories forming a tree structure."""
     def __init__(self, categories: list[_ProductCategory]):
         self._categories = categories
 
@@ -87,6 +89,7 @@ _base_headers = {
 
 
 class Product:
+    """A product returned by the Triangle API."""
     def __init__(self, code: str, name: str, is_in_clearance: bool, url: str):
         self._code = code
         self._name = name
@@ -119,6 +122,7 @@ class Product:
 
 
 class Sku:
+    """A SKU returned by the Triangle API."""
     def __init__(self, code: str, formatted_code: str):
         self._code = code
         self._formatted_code = formatted_code
@@ -140,6 +144,7 @@ class Sku:
 
 
 class PriceInfo:
+    """Price and availability info for a SKU returned by the Triangle API."""
     def __init__(self, result: dict):
         self._raw_payload = result
 
@@ -170,6 +175,7 @@ class PriceInfo:
 
 
 class ProductInventory(Iterable):
+    """Iterates over all products in the store's inventory via the Triangle API."""
     def __init__(
         self,
         category_levels_to_scrape: list[int] | None = None,
@@ -304,14 +310,18 @@ class ProductInventory(Iterable):
 
 
 class NoSuchProductException(RuntimeError):
+    """Raised when a product does not exist in the Triangle API."""
     pass
 
 
 class UnknownProductErrorException(RuntimeError):
+    """Raised when an unknown error occurs while fetching a product."""
     pass
 
 
 class SkusInventory(Iterable):
+    """Fetches all SKUs for a given product from the Triangle API."""
+
     def __init__(self, product_code: str):
         self._product_code = product_code
 
@@ -350,8 +360,8 @@ class SkusInventory(Iterable):
         raise UnknownProductErrorException
 
 
-# A non-200 HTTP response when querying prices.
 class _PriceQueryException(Exception):
+    """Raised on a non-200 HTTP response when querying prices."""
     def __init__(self, msg: str, request_status_code: Optional[int] = None):
         super().__init__(msg)
         self._request_status_code = request_status_code
@@ -361,7 +371,9 @@ class _PriceQueryException(Exception):
         return self._request_status_code
 
 
-class ProductLedger(Iterable):
+class PriceFetcher(Iterable):
+    """Fetches price info for SKUs in batches from the Triangle API."""
+
     def __init__(self, sku_codes: Iterator[str]):
         self._sku_codes = sku_codes
         pass
@@ -432,7 +444,7 @@ class ProductLedger(Iterable):
         sku_codes: Sequence[str],
     ) -> Sequence[PriceInfo]:
         try:
-            response_skus = ProductLedger._request_price_infos(sku_codes).json(
+            response_skus = PriceFetcher._request_price_infos(sku_codes).json(
                 parse_float=decimal.Decimal
             )["skus"]
             logger.debug("Received {} price infos".format(len(response_skus)))
@@ -453,7 +465,7 @@ class ProductLedger(Iterable):
                 price_infos = []
                 for code in sku_codes:
                     try:
-                        single_result = ProductLedger._get_price_infos([code])
+                        single_result = PriceFetcher._get_price_infos([code])
                         if single_result:
                             price_infos.append(single_result[0])
                         else:
