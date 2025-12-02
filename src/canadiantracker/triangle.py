@@ -5,7 +5,7 @@ import logging
 import time
 from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
-from typing import Callable, Generator, Optional, Tuple
+from typing import Any, Callable, Coroutine, Generator, Optional, Tuple
 
 import asyncio
 
@@ -14,7 +14,7 @@ from curl_cffi.requests import AsyncSession, Response
 logger = logging.getLogger(__name__)
 
 
-def _run_async(coro):
+def _run_async(coro: Coroutine[Any, Any, Any]) -> Any:
     """
     Run an async coroutine synchronously.
 
@@ -25,13 +25,13 @@ def _run_async(coro):
     return asyncio.run(coro)
 
 
-async def _async_get(url: str, **kwargs) -> Response:
+async def _async_get(url: str, **kwargs: Any) -> Response:
     """Async GET request wrapper."""
     async with AsyncSession() as session:
         return await session.get(url, **kwargs)
 
 
-async def _async_post(url: str, **kwargs) -> Response:
+async def _async_post(url: str, **kwargs: Any) -> Response:
     """Async POST request wrapper."""
     async with AsyncSession() as session:
         return await session.post(url, **kwargs)
