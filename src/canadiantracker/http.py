@@ -2,7 +2,6 @@ import json
 import os
 from pathlib import Path
 
-import starlette.templating
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
