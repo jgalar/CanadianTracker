@@ -18,6 +18,7 @@
   let chartContainer = $state<HTMLDivElement>(null!);
   let chart: uPlot | null = null;
   let originalScales: { min: number; max: number } | null = null;
+  let hoverInfo = $state<{ price: number; date: Date } | null>(null);
 
   // WeakMaps to store event handlers for cleanup without using `any` type casting
   const dblClickHandlers = new WeakMap<uPlot, () => void>();
@@ -148,6 +149,21 @@
             }
           },
         ],
+        setCursor: [
+          (u) => {
+            const idx = u.cursor.idx;
+            const timestamp = idx != null ? u.data[0]?.[idx] : undefined;
+            const price = idx != null ? u.data[1]?.[idx] : undefined;
+            if (timestamp !== undefined && price !== undefined) {
+              hoverInfo = {
+                price,
+                date: new Date(timestamp * 1000),
+              };
+            } else {
+              hoverInfo = null;
+            }
+          },
+        ],
       },
     };
 
@@ -240,7 +256,15 @@
       </div>
 
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Price History</h2>
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-semibold text-gray-900">Price History</h2>
+          {#if hoverInfo}
+            <span class="text-sm text-gray-600">
+              <span class="font-semibold">${hoverInfo.price.toFixed(2)}</span>
+              <span class="text-gray-400 ml-2">{hoverInfo.date.toLocaleDateString()}</span>
+            </span>
+          {/if}
+        </div>
         <div bind:this={chartContainer} class="w-full"></div>
         <p class="text-xs text-gray-400 mt-2">Drag horizontally to zoom, double-click or press R/Esc to reset</p>
       </div>
