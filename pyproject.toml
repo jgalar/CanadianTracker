@@ -27,6 +27,7 @@ flake8 = "^7.3.0"
 flake8-annotations = "^3.2.0"
 isort = "^7.0.0"
 basedpyright = "^1.33.0"
+flake8-bugbear = "^25.11.29"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
