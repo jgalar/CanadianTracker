@@ -217,10 +217,8 @@ class InvalidDatabaseRevisionException(Exception):
     """Raised when the database schema version doesn't match the expected revision."""
 
     def __init__(self, msg: str):
+        super().__init__(f"Failed to validate database revision: {msg}")
         self._msg = msg
-
-    def __str__(self):
-        return f"Failed to validate database revision: {self._msg}"
 
 
 def _validate_product_code_format(product_code: str):
