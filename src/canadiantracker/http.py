@@ -2,7 +2,6 @@ import json
 import os
 from pathlib import Path
 
-import starlette.templating
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -246,14 +245,14 @@ def make_sku_url(sku_code: str, product_url: str) -> str | None:
 
 
 @app.get("/", response_class=HTMLResponse, response_model=None)
-async def index(request: Request):
+async def index(request: Request) -> Response:
     if _use_svelte:
         return _serve_svelte_index()
     return _templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/products/{product_code}", response_class=HTMLResponse, response_model=None)
-async def one_product(request: Request, product_code: str):
+async def one_product(request: Request, product_code: str) -> Response:
     if _use_svelte:
         return _serve_svelte_index()
     product = _get_repository().get_product_by_code(product_code)
@@ -263,7 +262,7 @@ async def one_product(request: Request, product_code: str):
 
 
 @app.get("/skus/{sku_code}", response_class=HTMLResponse, response_model=None)
-async def one_sku(request: Request, sku_code: str):
+async def one_sku(request: Request, sku_code: str) -> Response:
     if _use_svelte:
         return _serve_svelte_index()
     sku = _get_repository().get_sku_by_code(sku_code)

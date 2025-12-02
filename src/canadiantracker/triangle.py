@@ -1,20 +1,19 @@
 from __future__ import annotations
 
+import asyncio
 import decimal
 import logging
 import time
 from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
-from typing import Callable, Generator, Optional, Tuple
-
-import asyncio
+from typing import Callable, Coroutine, Generator, Optional, Tuple
 
 from curl_cffi.requests import AsyncSession, Response
 
 logger = logging.getLogger(__name__)
 
 
-def _run_async(coro):
+def _run_async(coro: Coroutine[object, object, Response]) -> Response:
     """
     Run an async coroutine synchronously.
 
@@ -25,13 +24,13 @@ def _run_async(coro):
     return asyncio.run(coro)
 
 
-async def _async_get(url: str, **kwargs) -> Response:
+async def _async_get(url: str, **kwargs: object) -> Response:
     """Async GET request wrapper."""
     async with AsyncSession() as session:
         return await session.get(url, **kwargs)
 
 
-async def _async_post(url: str, **kwargs) -> Response:
+async def _async_post(url: str, **kwargs: object) -> Response:
     """Async POST request wrapper."""
     async with AsyncSession() as session:
         return await session.post(url, **kwargs)
@@ -403,7 +402,7 @@ class _PriceQueryException(Exception):
     """Raised on a non-200 HTTP response when querying prices."""
 
     def __init__(self, msg: str, request_status_code: Optional[int] = None):
-        super().__init__(msg)
+        super().__init__(msg, request_status_code)
         self._request_status_code = request_status_code
 
     @property
