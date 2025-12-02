@@ -1,13 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import decimal
 import logging
 import time
 from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
 from typing import Callable, Coroutine, Generator, Optional, Tuple
-
-import asyncio
 
 from curl_cffi.requests import AsyncSession, Response
 
