@@ -17,6 +17,11 @@
   let error = $state<string | null>(null);
   let chartContainer = $state<HTMLDivElement>(null!);
   let chart: uPlot | null = null;
+  let originalScales: { min: number; max: number } | null = null;
+
+  // WeakMaps to store event handlers for cleanup without using `any` type casting
+  const dblClickHandlers = new WeakMap<uPlot, () => void>();
+  const keyDownHandlers = new WeakMap<uPlot, (e: KeyboardEvent) => void>();
 
   let stats = $derived.by(() => {
     if (samples.length === 0) {
@@ -41,6 +46,9 @@
     if (chart) {
       chart.destroy();
     }
+
+    // Reset originalScales so it gets recalculated for the new chart instance
+    originalScales = null;
 
     // Process data to create step chart (horizontal then vertical)
     const processedTimes: number[] = [];
@@ -95,6 +103,51 @@
       scales: {
         x: { time: true },
         y: { auto: true },
+      },
+      hooks: {
+        ready: [
+          (u) => {
+            originalScales = {
+              min: u.scales.x.min!,
+              max: u.scales.x.max!,
+            };
+          },
+        ],
+        init: [
+          (u) => {
+            const resetZoom = () => {
+              if (originalScales) {
+                u.setScale('x', originalScales);
+              }
+            };
+            const handleDblClick = () => resetZoom();
+            const handleKeyDown = (e: KeyboardEvent) => {
+              if (e.key === 'r' || e.key === 'R' || e.key === 'Escape') {
+                resetZoom();
+              }
+            };
+            u.over.addEventListener('dblclick', handleDblClick);
+            u.over.addEventListener('keydown', handleKeyDown);
+            // Make the chart focusable for keyboard events
+            u.over.setAttribute('tabindex', '0');
+            dblClickHandlers.set(u, handleDblClick);
+            keyDownHandlers.set(u, handleKeyDown);
+          },
+        ],
+        destroy: [
+          (u) => {
+            const dblClickHandler = dblClickHandlers.get(u);
+            if (dblClickHandler) {
+              u.over.removeEventListener('dblclick', dblClickHandler);
+              dblClickHandlers.delete(u);
+            }
+            const keyDownHandler = keyDownHandlers.get(u);
+            if (keyDownHandler) {
+              u.over.removeEventListener('keydown', keyDownHandler);
+              keyDownHandlers.delete(u);
+            }
+          },
+        ],
       },
     };
 
@@ -189,6 +242,7 @@
       <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Price History</h2>
         <div bind:this={chartContainer} class="w-full"></div>
+        <p class="text-xs text-gray-400 mt-2">Drag horizontally to zoom, double-click or press R/Esc to reset</p>
       </div>
     {/if}
   </main>
