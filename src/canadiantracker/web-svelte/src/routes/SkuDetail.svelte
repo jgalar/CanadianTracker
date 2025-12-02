@@ -15,7 +15,7 @@
   let skuDetails = $state<SkuDetails | null>(null);
   let isLoading = $state(true);
   let error = $state<string | null>(null);
-  let chartContainer: HTMLDivElement;
+  let chartContainer = $state<HTMLDivElement>(null!);
   let chart: uPlot | null = null;
 
   let stats = $derived.by(() => {
