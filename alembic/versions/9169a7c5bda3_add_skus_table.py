@@ -137,7 +137,9 @@ def upgrade() -> None:
     # Build an in-memory sku code -> sku index map, to speed up lookups lower
     # (avoid doing millions of SQL queries when migrating the samples).
     sku_code_to_index = {}
-    for index, code, _formatted_code, _product_index in db.execute(sa.select(skus_table)):
+    for index, code, _formatted_code, _product_index in db.execute(
+        sa.select(skus_table)
+    ):
         sku_code_to_index[code] = index
 
     print(">>> Dropping products_static.sku column")
