@@ -140,6 +140,12 @@ class Session:
                 logger.info("Session expired, creating new session")
                 self.close()
 
+            # Harvest Akamai cookies BEFORE setting up the event loop.
+            # Camoufox's sync API runs its own event loop internally, so we
+            # must do this before calling asyncio.set_event_loop() to avoid
+            # "Cannot run the event loop while another loop is running" errors.
+            akamai_cookies = _harvest_akamai_cookies()
+
             self._loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self._loop)
             session = AsyncSession()
@@ -155,8 +161,7 @@ class Session:
                 f"expires in {lifetime / 60:.1f} minutes"
             )
 
-            # Harvest Akamai cookies and apply them to the session
-            akamai_cookies = _harvest_akamai_cookies()
+            # Apply the harvested cookies to the session
             for name, value in akamai_cookies.items():
                 session.cookies.set(name, value, domain=_CT_DOMAIN)
 
