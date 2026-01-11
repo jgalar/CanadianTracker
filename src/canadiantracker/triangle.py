@@ -141,6 +141,20 @@ class _ProductCategories:
 _REQUEST_DELAY_MIN = 1.0
 _REQUEST_DELAY_MAX = 3.0
 
+# Browser impersonation targets for curl_cffi (rotated randomly per request)
+_IMPERSONATE_TARGETS = [
+    "chrome133",
+    "chrome136",
+    "edge131",
+    "safari18_0",
+]
+
+
+def _random_impersonate() -> str:
+    """Return a random browser impersonation target."""
+    return random.choice(_IMPERSONATE_TARGETS)
+
+
 _base_headers = {
     "accept": "application/json, text/plain, */*",
     "bannerid": "CTR",
@@ -294,7 +308,7 @@ class ProductInventory(Iterable):
             "https://apim.canadiantire.ca/v1/category/api/v1/categories",
             headers=_base_headers,
             params={"lang": "en_CA"},
-            impersonate="chrome136",
+            impersonate=_random_impersonate(),
         )
 
         if response.status_code != 200:
@@ -323,7 +337,7 @@ class ProductInventory(Iterable):
         return _get_session().get(
             f"https://apim.canadiantire.ca/v1/search/search?store=64&lang=en_CA&x1=ast-id-level-{cat_level}&q1={cat.id}&experience=category;count=48;page={page_number}",
             headers=_base_headers,
-            impersonate="chrome136",
+            impersonate=_random_impersonate(),
         )
 
     def __iter__(self) -> Iterator[Product]:
@@ -408,7 +422,7 @@ class SkusInventory(Iterable):
             f"https://apim.canadiantire.ca/v1/product/api/v1/product/productFamily/{product_code}?baseStoreId=CTR&lang=en_CA&storeId=64",
             headers=headers,
             timeout=10,
-            impersonate="chrome136",
+            impersonate=_random_impersonate(),
         )
 
     def __iter__(self):
@@ -493,7 +507,7 @@ class PriceFetcher(Iterable):
                     headers=headers,
                     json=body,
                     timeout=10,
-                    impersonate="chrome136",
+                    impersonate=_random_impersonate(),
                 )
             except Exception as e:
                 logger.warning(
