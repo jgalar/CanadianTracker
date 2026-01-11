@@ -145,6 +145,10 @@ _REQUEST_DELAY_MAX = 3.0
 _BACKOFF_BASE = 5.0  # Base delay in seconds
 _BACKOFF_MAX = 60.0  # Maximum delay in seconds
 
+# Batch size range for price queries (API limit is 50)
+_BATCH_SIZE_MIN = 35
+_BATCH_SIZE_MAX = 50
+
 
 def _backoff_delay(attempt: int) -> float:
     """
@@ -491,13 +495,25 @@ class PriceFetcher(Iterable):
         self._sku_codes = sku_codes
 
     @staticmethod
-    def _batches(it: Iterator, batch_max_size: int) -> Generator[list, None, None]:
+    def _batches(
+        it: Iterator, batch_min_size: int, batch_max_size: int
+    ) -> Generator[list, None, None]:
+        """
+        Yield batches of elements with randomized sizes.
+
+        Each batch has a randomly chosen size between batch_min_size and
+        batch_max_size to make request patterns less predictable.
+        """
         batch = []
+        # Choose a random target size for this batch
+        target_size = random.randint(batch_min_size, batch_max_size)
         for element in it:
             batch.append(element)
-            if len(batch) == batch_max_size:
+            if len(batch) == target_size:
                 yield batch
                 batch = []
+                # Choose a new random size for the next batch
+                target_size = random.randint(batch_min_size, batch_max_size)
 
         if len(batch) > 0:
             yield batch
@@ -605,8 +621,10 @@ class PriceFetcher(Iterable):
                 raise batch_query_exception
 
     def __iter__(self) -> Iterator[PriceInfo]:
-        # The API limits requests to 50 products
-        for batch in self._batches(self._sku_codes, 50):
+        # The API limits requests to 50 products; use variable batch sizes
+        for batch in self._batches(
+            self._sku_codes, _BATCH_SIZE_MIN, _BATCH_SIZE_MAX
+        ):
             try:
                 for price_info in self._get_price_infos(batch):
                     yield price_info
