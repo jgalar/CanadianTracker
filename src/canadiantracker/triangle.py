@@ -141,6 +141,23 @@ class _ProductCategories:
 _REQUEST_DELAY_MIN = 1.0
 _REQUEST_DELAY_MAX = 3.0
 
+# Exponential backoff settings for retries
+_BACKOFF_BASE = 5.0  # Base delay in seconds
+_BACKOFF_MAX = 60.0  # Maximum delay in seconds
+
+
+def _backoff_delay(attempt: int) -> float:
+    """
+    Calculate exponential backoff delay with jitter.
+
+    Returns a delay that increases exponentially with each attempt,
+    plus random jitter to avoid thundering herd.
+    """
+    delay = min(_BACKOFF_BASE * (2**attempt), _BACKOFF_MAX)
+    # Add up to 25% jitter
+    jitter = delay * random.uniform(0, 0.25)
+    return delay + jitter
+
 # Browser impersonation targets for curl_cffi (rotated randomly per request)
 _IMPERSONATE_TARGETS = [
     "chrome133",
@@ -431,8 +448,12 @@ class SkusInventory(Iterable):
             if resp.status_code == 404:
                 raise NoSuchProductException
             if resp.status_code not in (200, 206):
-                logger.error(f"Got status code {resp.status_code} on try {ntry}")
-                time.sleep(5)
+                delay = _backoff_delay(ntry)
+                logger.error(
+                    f"Got status code {resp.status_code} on try {ntry}, "
+                    f"backing off for {delay:.1f}s"
+                )
+                time.sleep(delay)
                 continue
 
             resp = resp.json()
@@ -516,7 +537,6 @@ class PriceFetcher(Iterable):
                 continue
 
             if response.status_code != 200:
-                # Wait a bit before retrying, in case the admin is restarting the container.
                 logger.error(f"Got status code {response.status_code} on try {ntry}")
                 logger.error(response.text)
 
@@ -527,7 +547,10 @@ class PriceFetcher(Iterable):
                         "Failed to get product info", response.status_code
                     )
 
-                time.sleep(5)
+                # Exponential backoff before retrying
+                delay = _backoff_delay(ntry)
+                logger.debug(f"Backing off for {delay:.1f}s before retry")
+                time.sleep(delay)
                 continue
 
             return response
