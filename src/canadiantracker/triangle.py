@@ -13,36 +13,59 @@ from curl_cffi.requests import AsyncSession, Response
 
 logger = logging.getLogger(__name__)
 
+# Browser impersonation targets for curl_cffi (chosen once per session)
+_IMPERSONATE_TARGETS = [
+    "chrome133",
+    "chrome136",
+    "edge131",
+    "safari18_0",
+]
+
+
+def _random_impersonate() -> str:
+    """Return a random browser impersonation target."""
+    return random.choice(_IMPERSONATE_TARGETS)
+
 
 class Session:
     """
     Manages a persistent HTTP session using curl_cffi.
 
     Keeps the session and event loop alive between requests for better
-    performance and to behave more like a real browser.
+    performance and to behave more like a real browser. The browser
+    impersonation target is chosen randomly at session creation and
+    remains consistent for all requests in the session.
     """
 
     def __init__(self) -> None:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._session: AsyncSession | None = None
+        self._impersonate: str | None = None
 
-    def _ensure_session(self) -> tuple[asyncio.AbstractEventLoop, AsyncSession]:
+    def _ensure_session(self) -> tuple[asyncio.AbstractEventLoop, AsyncSession, str]:
         """Ensure we have an active event loop and session."""
         if self._loop is None or self._loop.is_closed():
             self._loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self._loop)
             self._session = AsyncSession()
-        return self._loop, self._session  # type: ignore[return-value]
+            # Choose impersonation target once per session for consistency
+            self._impersonate = _random_impersonate()
+            logger.debug(f"Created new session with impersonate={self._impersonate}")
+        return self._loop, self._session, self._impersonate  # type: ignore[return-value]
 
     def get(self, url: str, **kwargs: object) -> Response:
         """Perform a GET request using the persistent session."""
-        loop, session = self._ensure_session()
-        return loop.run_until_complete(session.get(url, **kwargs))
+        loop, session, impersonate = self._ensure_session()
+        return loop.run_until_complete(
+            session.get(url, impersonate=impersonate, **kwargs)
+        )
 
     def post(self, url: str, **kwargs: object) -> Response:
         """Perform a POST request using the persistent session."""
-        loop, session = self._ensure_session()
-        return loop.run_until_complete(session.post(url, **kwargs))
+        loop, session, impersonate = self._ensure_session()
+        return loop.run_until_complete(
+            session.post(url, impersonate=impersonate, **kwargs)
+        )
 
     def close(self) -> None:
         """Close the session and event loop."""
@@ -161,20 +184,6 @@ def _backoff_delay(attempt: int) -> float:
     # Add up to 25% jitter
     jitter = delay * random.uniform(0, 0.25)
     return delay + jitter
-
-# Browser impersonation targets for curl_cffi (rotated randomly per request)
-_IMPERSONATE_TARGETS = [
-    "chrome133",
-    "chrome136",
-    "edge131",
-    "safari18_0",
-]
-
-
-def _random_impersonate() -> str:
-    """Return a random browser impersonation target."""
-    return random.choice(_IMPERSONATE_TARGETS)
-
 
 _base_headers = {
     "accept": "application/json, text/plain, */*",
@@ -329,7 +338,6 @@ class ProductInventory(Iterable):
             "https://apim.canadiantire.ca/v1/category/api/v1/categories",
             headers=_base_headers,
             params={"lang": "en_CA"},
-            impersonate=_random_impersonate(),
         )
 
         if response.status_code != 200:
@@ -358,7 +366,6 @@ class ProductInventory(Iterable):
         return _get_session().get(
             f"https://apim.canadiantire.ca/v1/search/search?store=64&lang=en_CA&x1=ast-id-level-{cat_level}&q1={cat.id}&experience=category;count=48;page={page_number}",
             headers=_base_headers,
-            impersonate=_random_impersonate(),
         )
 
     def __iter__(self) -> Iterator[Product]:
@@ -443,7 +450,6 @@ class SkusInventory(Iterable):
             f"https://apim.canadiantire.ca/v1/product/api/v1/product/productFamily/{product_code}?baseStoreId=CTR&lang=en_CA&storeId=64",
             headers=headers,
             timeout=10,
-            impersonate=_random_impersonate(),
         )
 
     def __iter__(self):
@@ -544,7 +550,6 @@ class PriceFetcher(Iterable):
                     headers=headers,
                     json=body,
                     timeout=10,
-                    impersonate=_random_impersonate(),
                 )
             except Exception as e:
                 logger.warning(
