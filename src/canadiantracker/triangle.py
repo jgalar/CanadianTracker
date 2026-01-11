@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Callable, Generator, Literal, Optional, Tuple
 
 from camoufox.sync_api import Camoufox
-from curl_cffi.requests import AsyncSession, Response
+from curl_cffi.requests import AsyncSession, BrowserType, Response
 
 logger = logging.getLogger(__name__)
 
@@ -44,18 +44,9 @@ _COOKIE_HARVEST_WAIT_MS = 5000
 _SESSION_LIFETIME_MIN = 30 * 60  # 30 minutes
 _SESSION_LIFETIME_MAX = 60 * 60  # 60 minutes
 
-# Browser impersonation targets for curl_cffi (chosen once per session)
-_IMPERSONATE_TARGETS = [
-    "chrome133",
-    "chrome136",
-    "edge131",
-    "safari18_0",
-]
-
-
 def _random_impersonate() -> str:
-    """Return a random browser impersonation target."""
-    return random.choice(_IMPERSONATE_TARGETS)
+    """Return a random browser impersonation target from curl_cffi's supported list."""
+    return random.choice([bt.value for bt in BrowserType])
 
 
 def _harvest_akamai_cookies() -> dict[str, str]:
