@@ -40,6 +40,10 @@ _CT_URL = "https://www.canadiantire.ca/"
 # Time to wait for Akamai JS to set cookies (in milliseconds)
 _COOKIE_HARVEST_WAIT_MS = 5000
 
+# Session lifetime bounds (in seconds) - sessions expire randomly within this range
+_SESSION_LIFETIME_MIN = 30 * 60  # 30 minutes
+_SESSION_LIFETIME_MAX = 60 * 60  # 60 minutes
+
 # Browser impersonation targets for curl_cffi (chosen once per session)
 _IMPERSONATE_TARGETS = [
     "chrome133",
@@ -107,23 +111,49 @@ class Session:
 
     On session creation, Akamai cookies are harvested using a real browser
     (Camoufox) to help bypass bot detection.
+
+    Sessions have a limited lifetime (30-60 minutes, randomly chosen) after
+    which they are automatically destroyed and recreated. This mimics natural
+    browsing behavior and prevents long-lived sessions that might be flagged.
     """
 
     def __init__(self) -> None:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._session: AsyncSession | None = None
         self._impersonate: str | None = None
+        self._expires_at: float = 0  # Monotonic clock time when session expires
+
+    def _is_expired(self) -> bool:
+        """Check if the current session has exceeded its lifetime."""
+        return time.monotonic() >= self._expires_at
 
     def _ensure_session(self) -> tuple[asyncio.AbstractEventLoop, AsyncSession, str]:
-        """Ensure we have an active event loop and session."""
-        if self._loop is None or self._loop.is_closed():
+        """Ensure we have an active, non-expired event loop and session."""
+        # Check if we need a new session (none exists, closed, or expired)
+        need_new_session = (
+            self._loop is None or self._loop.is_closed() or self._is_expired()
+        )
+
+        if need_new_session:
+            # Close existing session if it's expired
+            if self._loop is not None and not self._loop.is_closed():
+                logger.info("Session expired, creating new session")
+                self.close()
+
             self._loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self._loop)
             session = AsyncSession()
             self._session = session
             # Choose impersonation target once per session for consistency
             self._impersonate = _random_impersonate()
-            logger.debug(f"Created new session with impersonate={self._impersonate}")
+
+            # Set random session lifetime
+            lifetime = random.uniform(_SESSION_LIFETIME_MIN, _SESSION_LIFETIME_MAX)
+            self._expires_at = time.monotonic() + lifetime
+            logger.debug(
+                f"Created new session with impersonate={self._impersonate}, "
+                f"expires in {lifetime / 60:.1f} minutes"
+            )
 
             # Harvest Akamai cookies and apply them to the session
             akamai_cookies = _harvest_akamai_cookies()
