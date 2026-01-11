@@ -91,6 +91,20 @@ def _harvest_akamai_cookies() -> dict[str, str]:
 
     except Exception as e:
         logger.warning(f"Failed to harvest Akamai cookies: {e}")
+        # Clean up any event loop left behind by Playwright/Camoufox.
+        # When the browser fails to launch, Playwright's sync API can leave
+        # an event loop in a bad state, causing "Cannot run the event loop
+        # while another loop is running" errors later.
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.stop()
+            if not loop.is_closed():
+                loop.close()
+        except RuntimeError:
+            pass
+        # Clear any running loop reference
+        asyncio.set_event_loop(None)
 
     if "_abck" in cookies:
         logger.info("Successfully harvested Akamai _abck cookie")
