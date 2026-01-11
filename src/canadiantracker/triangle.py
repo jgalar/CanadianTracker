@@ -4,14 +4,41 @@ import asyncio
 import decimal
 import logging
 import random
+import shutil
 import time
 from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
-from typing import Callable, Generator, Optional, Tuple
+from typing import Callable, Generator, Literal, Optional, Tuple
 
+from camoufox.sync_api import Camoufox
 from curl_cffi.requests import AsyncSession, Response
 
 logger = logging.getLogger(__name__)
+
+
+def _get_headless_mode() -> Literal["virtual"] | bool:
+    """
+    Determine the best headless mode for the current environment.
+
+    Returns "virtual" if Xvfb is available (uses virtual display, more stealthy),
+    otherwise returns True for pure headless mode (works everywhere but more detectable).
+    """
+    if shutil.which("Xvfb"):
+        return "virtual"
+    else:
+        logger.warning(
+            "Xvfb not found - using pure headless mode (more detectable). "
+            "Install Xvfb for better stealth: apt install xvfb"
+        )
+        return True
+
+
+# Domain used for cookie harvesting and API requests
+_CT_DOMAIN = ".canadiantire.ca"
+_CT_URL = "https://www.canadiantire.ca/"
+
+# Time to wait for Akamai JS to set cookies (in milliseconds)
+_COOKIE_HARVEST_WAIT_MS = 5000
 
 # Browser impersonation targets for curl_cffi (chosen once per session)
 _IMPERSONATE_TARGETS = [
@@ -27,6 +54,48 @@ def _random_impersonate() -> str:
     return random.choice(_IMPERSONATE_TARGETS)
 
 
+def _harvest_akamai_cookies() -> dict[str, str]:
+    """
+    Harvest Akamai cookies (_abck, bm_sz) by loading the site in a real browser.
+
+    Uses Camoufox (a stealthy Firefox build) to load the Canadian Tire homepage,
+    allowing Akamai's JavaScript to run and set the authentication cookies.
+
+    Returns a dict of cookie name -> value for relevant Akamai cookies.
+    """
+    logger.info("Harvesting Akamai cookies using Camoufox...")
+    cookies: dict[str, str] = {}
+
+    try:
+        # Use virtual display if Xvfb available, otherwise pure headless
+        headless_mode = _get_headless_mode()
+        with Camoufox(headless=headless_mode) as browser:
+            page = browser.new_page()
+            page.goto(_CT_URL)
+
+            # Wait for Akamai JS to execute and set cookies
+            page.wait_for_timeout(_COOKIE_HARVEST_WAIT_MS)
+
+            # Extract all cookies
+            for cookie in page.context.cookies():
+                # We want _abck and bm_sz (both used by Akamai)
+                if cookie["name"] in ("_abck", "bm_sz"):
+                    cookies[cookie["name"]] = cookie["value"]
+                    logger.debug(f"Harvested cookie: {cookie['name']}")
+
+            page.close()
+
+    except Exception as e:
+        logger.warning(f"Failed to harvest Akamai cookies: {e}")
+
+    if "_abck" in cookies:
+        logger.info("Successfully harvested Akamai _abck cookie")
+    else:
+        logger.warning("Failed to harvest _abck cookie - requests may be blocked")
+
+    return cookies
+
+
 class Session:
     """
     Manages a persistent HTTP session using curl_cffi.
@@ -35,6 +104,9 @@ class Session:
     performance and to behave more like a real browser. The browser
     impersonation target is chosen randomly at session creation and
     remains consistent for all requests in the session.
+
+    On session creation, Akamai cookies are harvested using a real browser
+    (Camoufox) to help bypass bot detection.
     """
 
     def __init__(self) -> None:
@@ -47,10 +119,17 @@ class Session:
         if self._loop is None or self._loop.is_closed():
             self._loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self._loop)
-            self._session = AsyncSession()
+            session = AsyncSession()
+            self._session = session
             # Choose impersonation target once per session for consistency
             self._impersonate = _random_impersonate()
             logger.debug(f"Created new session with impersonate={self._impersonate}")
+
+            # Harvest Akamai cookies and apply them to the session
+            akamai_cookies = _harvest_akamai_cookies()
+            for name, value in akamai_cookies.items():
+                session.cookies.set(name, value, domain=_CT_DOMAIN)
+
         return self._loop, self._session, self._impersonate  # type: ignore[return-value]
 
     def get(self, url: str, **kwargs: object) -> Response:
@@ -184,6 +263,7 @@ def _backoff_delay(attempt: int) -> float:
     # Add up to 25% jitter
     jitter = delay * random.uniform(0, 0.25)
     return delay + jitter
+
 
 _base_headers = {
     "accept": "application/json, text/plain, */*",
@@ -627,9 +707,7 @@ class PriceFetcher(Iterable):
 
     def __iter__(self) -> Iterator[PriceInfo]:
         # The API limits requests to 50 products; use variable batch sizes
-        for batch in self._batches(
-            self._sku_codes, _BATCH_SIZE_MIN, _BATCH_SIZE_MAX
-        ):
+        for batch in self._batches(self._sku_codes, _BATCH_SIZE_MIN, _BATCH_SIZE_MAX):
             try:
                 for price_info in self._get_price_infos(batch):
                     yield price_info
