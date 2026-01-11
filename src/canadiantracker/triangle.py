@@ -7,34 +7,70 @@ import random
 import time
 from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
-from typing import Callable, Coroutine, Generator, Optional, Tuple
+from typing import Callable, Generator, Optional, Tuple
 
 from curl_cffi.requests import AsyncSession, Response
 
 logger = logging.getLogger(__name__)
 
 
-def _run_async(coro: Coroutine[object, object, Response]) -> Response:
+class Session:
     """
-    Run an async coroutine synchronously.
+    Manages a persistent HTTP session using curl_cffi.
 
-    Uses asyncio.run() which properly handles SIGINT (Ctrl-C), unlike
-    curl_cffi's synchronous API which blocks in C code and defers signal
-    handling until the request completes.
+    Keeps the session and event loop alive between requests for better
+    performance and to behave more like a real browser.
     """
-    return asyncio.run(coro)
+
+    def __init__(self) -> None:
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._session: AsyncSession | None = None
+
+    def _ensure_session(self) -> tuple[asyncio.AbstractEventLoop, AsyncSession]:
+        """Ensure we have an active event loop and session."""
+        if self._loop is None or self._loop.is_closed():
+            self._loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._loop)
+            self._session = AsyncSession()
+        return self._loop, self._session  # type: ignore[return-value]
+
+    def get(self, url: str, **kwargs: object) -> Response:
+        """Perform a GET request using the persistent session."""
+        loop, session = self._ensure_session()
+        return loop.run_until_complete(session.get(url, **kwargs))
+
+    def post(self, url: str, **kwargs: object) -> Response:
+        """Perform a POST request using the persistent session."""
+        loop, session = self._ensure_session()
+        return loop.run_until_complete(session.post(url, **kwargs))
+
+    def close(self) -> None:
+        """Close the session and event loop."""
+        if self._session is not None:
+            if self._loop is not None and not self._loop.is_closed():
+                self._loop.run_until_complete(self._session.close())
+            self._session = None
+        if self._loop is not None and not self._loop.is_closed():
+            self._loop.close()
+            self._loop = None
+
+    def __enter__(self) -> "Session":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        self.close()
 
 
-async def _async_get(url: str, **kwargs: object) -> Response:
-    """Async GET request wrapper."""
-    async with AsyncSession() as session:
-        return await session.get(url, **kwargs)
+# Global shared session instance
+_shared_session: Session | None = None
 
 
-async def _async_post(url: str, **kwargs: object) -> Response:
-    """Async POST request wrapper."""
-    async with AsyncSession() as session:
-        return await session.post(url, **kwargs)
+def _get_session() -> Session:
+    """Get or create the shared session instance."""
+    global _shared_session
+    if _shared_session is None:
+        _shared_session = Session()
+    return _shared_session
 
 
 class _ProductCategory:
@@ -254,13 +290,11 @@ class ProductInventory(Iterable):
 
     def _fetch_categories(self) -> _ProductCategories:
         """Fetch the list of categories, create some objects out of it."""
-        response = _run_async(
-            _async_get(
-                "https://apim.canadiantire.ca/v1/category/api/v1/categories",
-                headers=_base_headers,
-                params={"lang": "en_CA"},
-                impersonate="chrome136",
-            )
+        response = _get_session().get(
+            "https://apim.canadiantire.ca/v1/category/api/v1/categories",
+            headers=_base_headers,
+            params={"lang": "en_CA"},
+            impersonate="chrome136",
         )
 
         if response.status_code != 200:
@@ -286,12 +320,10 @@ class ProductInventory(Iterable):
         cat: _ProductCategory, cat_level: int, page_number: int = 1
     ) -> Response:
         """Fetch one page of products."""
-        return _run_async(
-            _async_get(
-                f"https://apim.canadiantire.ca/v1/search/search?store=64&lang=en_CA&x1=ast-id-level-{cat_level}&q1={cat.id}&experience=category;count=48;page={page_number}",
-                headers=_base_headers,
-                impersonate="chrome136",
-            )
+        return _get_session().get(
+            f"https://apim.canadiantire.ca/v1/search/search?store=64&lang=en_CA&x1=ast-id-level-{cat_level}&q1={cat.id}&experience=category;count=48;page={page_number}",
+            headers=_base_headers,
+            impersonate="chrome136",
         )
 
     def __iter__(self) -> Iterator[Product]:
@@ -372,13 +404,11 @@ class SkusInventory(Iterable):
     def _request_page(product_code: str) -> Response:
         """Fetch one product page."""
         headers = _base_headers.copy()
-        return _run_async(
-            _async_get(
-                f"https://apim.canadiantire.ca/v1/product/api/v1/product/productFamily/{product_code}?baseStoreId=CTR&lang=en_CA&storeId=64",
-                headers=headers,
-                timeout=10,
-                impersonate="chrome136",
-            )
+        return _get_session().get(
+            f"https://apim.canadiantire.ca/v1/product/api/v1/product/productFamily/{product_code}?baseStoreId=CTR&lang=en_CA&storeId=64",
+            headers=headers,
+            timeout=10,
+            impersonate="chrome136",
         )
 
     def __iter__(self):
@@ -458,14 +488,12 @@ class PriceFetcher(Iterable):
                 f"Sending batched price info query request: ntry={ntry} batch_size={len(sku_codes)} sku_codes={sku_codes}"
             )
             try:
-                response = _run_async(
-                    _async_post(
-                        url,
-                        headers=headers,
-                        json=body,
-                        timeout=10,
-                        impersonate="chrome136",
-                    )
+                response = _get_session().post(
+                    url,
+                    headers=headers,
+                    json=body,
+                    timeout=10,
+                    impersonate="chrome136",
                 )
             except Exception as e:
                 logger.warning(
