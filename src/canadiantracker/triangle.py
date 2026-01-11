@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import decimal
 import logging
+import random
 import time
 from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime
@@ -99,6 +100,10 @@ class _ProductCategories:
     def categories(self) -> Iterable[_ProductCategory]:
         return self._categories
 
+
+# Random delay range between requests (in seconds) to avoid rate limiting
+_REQUEST_DELAY_MIN = 1.0
+_REQUEST_DELAY_MAX = 3.0
 
 _base_headers = {
     "accept": "application/json, text/plain, */*",
@@ -334,6 +339,8 @@ class ProductInventory(Iterable):
                 ):
                     break
 
+                # Random delay between page requests to avoid rate limiting
+                time.sleep(random.uniform(_REQUEST_DELAY_MIN, _REQUEST_DELAY_MAX))
                 page = page + 1
 
             if (
@@ -393,6 +400,8 @@ class SkusInventory(Iterable):
             for sku in resp["skus"]:
                 yield Sku(sku["code"], sku["formattedCode"])
 
+            # Random delay after successful request to avoid rate limiting
+            time.sleep(random.uniform(_REQUEST_DELAY_MIN, _REQUEST_DELAY_MAX))
             return
 
         raise UnknownProductErrorException
@@ -538,3 +547,5 @@ class PriceFetcher(Iterable):
                     yield price_info
             except _PriceQueryException:
                 pass
+            # Random delay between batch requests to avoid rate limiting
+            time.sleep(random.uniform(_REQUEST_DELAY_MIN, _REQUEST_DELAY_MAX))
